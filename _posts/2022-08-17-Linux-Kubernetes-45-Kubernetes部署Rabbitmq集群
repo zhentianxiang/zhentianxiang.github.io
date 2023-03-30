@@ -1,0 +1,258 @@
+---
+layout: post
+title: Linux-Kubernetes-45-Kubernetes部署Rabbitmq集群
+date: 2022-8-17
+tags: 实战-Kubernetes
+---
+
+### 1. 使用statefulset部署rabbitmq集群
+
+在部署集群之前需要为集群创建一个Storage Class（存储类）来作为集群数据的持久化后端。本例中使用ceph作为后端存储，在创建存储类之前需要先搭建好，并保证在k8s集群各个节点上均能挂载该ceph存储。
+
+```sh
+[root@k8s rabbitmq-statefulset]# kubectl get sc
+NAME              PROVISIONER                  RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+rook-ceph-block   rook-ceph.rbd.csi.ceph.com   Delete          Immediate           false                  4d20h
+```
+
+**准备 configmap**
+
+```sh
+[root@k8s rabbitmq-statefulset]# kubectl create ns public-service
+namespace/public-service created
+[root@k8s rabbitmq-statefulset]# cat > rabbitmq-configmap.yaml <<EOF
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: rmq-cluster-config
+  namespace: public-service
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+data:
+    enabled_plugins: |
+      [rabbitmq_management,rabbitmq_peer_discovery_k8s].
+    rabbitmq.conf: |
+      loopback_users.guest = false
+
+      default_user = RABBITMQ_USER
+      default_pass = RABBITMQ_PASS
+      ## Clustering
+      cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+      cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+      cluster_formation.k8s.address_type = hostname
+      #################################################
+      # public-service is rabbitmq-cluster's namespace#
+      #################################################
+      cluster_formation.k8s.hostname_suffix = .rmq-cluster.public-service.svc.cluster.local
+      cluster_formation.node_cleanup.interval = 10
+      cluster_formation.node_cleanup.only_log_warning = true
+      cluster_partition_handling = autoheal
+      ## queue master locator
+      queue_master_locator=min-masters
+EOF
+```
+
+**准备 secret**
+
+```sh
+[root@k8s rabbitmq-statefulset]# cat > rabbitmq-secret.yaml <<EOF
+kind: Secret
+apiVersion: v1
+metadata:
+  name: rmq-cluster-secret
+  namespace: public-service
+stringData:
+  cookie: ERLANG_COOKIE
+  password: RABBITMQ_PASS
+  url: amqp://RABBITMQ_USER:RABBITMQ_PASS@rmq-cluster-balancer
+  username: RABBITMQ_USER
+type: Opaque
+EOF
+```
+
+**准备 svc**
+
+```sh
+[root@k8s rabbitmq-statefulset]# cat > rabbitmq-service-cluster.yaml <<EOF
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: rmq-cluster
+  name: rmq-cluster
+  namespace: public-service
+spec:
+  clusterIP: None
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: 5672
+  selector:
+    app: rmq-cluster
+EOF
+```
+
+```sh
+[root@k8s rabbitmq-statefulset]# cat > rabbitmq-service-lb.yaml <<EOF
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: rmq-cluster
+    type: LoadBalancer
+  name: rmq-cluster-balancer
+  namespace: public-service
+spec:
+  ports:
+  - name: http
+    port: 15672
+    protocol: TCP
+    targetPort: 15672
+  - name: amqp
+    port: 5672
+    protocol: TCP
+    targetPort: 5672
+  selector:
+    app: rmq-cluster
+  type: NodePort
+EOF
+```
+
+**准备 rbac**
+
+```sh
+[root@k8s rabbitmq-statefulset]# cat > rabbitmq-statefulset.yaml <<EOF
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: rmq-cluster
+  name: rmq-cluster
+  namespace: public-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rmq-cluster
+  serviceName: rmq-cluster
+  template:
+    metadata:
+      labels:
+        app: rmq-cluster
+    spec:
+      containers:
+      - args:
+        - -c
+        - cp -v /etc/rabbitmq/rabbitmq.conf ${RABBITMQ_CONFIG_FILE}; exec docker-entrypoint.sh
+          rabbitmq-server
+        command:
+        - sh
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: rmq-cluster-secret
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: rmq-cluster-secret
+        - name: RABBITMQ_ERLANG_COOKIE
+          valueFrom:
+            secretKeyRef:
+              key: cookie
+              name: rmq-cluster-secret
+        - name: K8S_SERVICE_NAME
+          value: rmq-cluster
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: RABBITMQ_USE_LONGNAME
+          value: "true"
+        - name: RABBITMQ_NODENAME
+          value: rabbit@$(POD_NAME).rmq-cluster.$(POD_NAMESPACE).svc.cluster.local
+        - name: RABBITMQ_CONFIG_FILE
+          value: /var/lib/rabbitmq/rabbitmq.conf
+        image: registry.cn-beijing.aliyuncs.com/dotbalo/rabbitmq:3.7-management
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - rabbitmqctl
+            - status
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        name: rabbitmq
+        ports:
+        - containerPort: 15672
+          name: http
+          protocol: TCP
+        - containerPort: 5672
+          name: amqp
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - rabbitmqctl
+            - status
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+        volumeMounts:
+        - mountPath: /etc/rabbitmq
+          name: config-volume
+          readOnly: false
+        - mountPath: /var/lib/rabbitmq
+          name: rabbitmq-storage
+          readOnly: false
+      serviceAccountName: rmq-cluster
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          items:
+          - key: rabbitmq.conf
+            path: rabbitmq.conf
+          - key: enabled_plugins
+            path: enabled_plugins
+          name: rmq-cluster-config
+        name: config-volume
+  volumeClaimTemplates:
+  - metadata:
+      name: rabbitmq-storage
+    spec:
+      accessModes:
+      - ReadWriteMany
+      storageClassName: "rook-ceph-block"
+      resources:
+        requests:
+          storage: 4Gi
+EOF
+```
+
+### 2. 创建启动集群
+
+```sh
+[root@k8s rabbitmq-statefulset]# kubectl apply -f .
+[root@k8s rabbitmq-statefulset]# kubectl get pods,svc -n public-service
+NAME                READY   STATUS    RESTARTS   AGE
+pod/rmq-cluster-0   1/1     Running   0          8m36s
+pod/rmq-cluster-1   1/1     Running   0          80s
+pod/rmq-cluster-2   1/1     Running   0          31s
+
+NAME                           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                          AGE
+service/rmq-cluster            ClusterIP   None            <none>        5672/TCP                         12m
+service/rmq-cluster-balancer   NodePort    10.104.21.189   <none>        15672:58556/TCP,5672:20091/TCP   12m
+[root@k8s rabbitmq-statefulset]# kubectl get ep -n public-service
+NAME                   ENDPOINTS                                                                 AGE
+rmq-cluster            10.100.82.177:5672,10.100.82.178:5672,10.100.82.179:5672                  19m
+rmq-cluster-balancer   10.100.82.177:15672,10.100.82.178:15672,10.100.82.179:15672 + 3 more...   19m
+```

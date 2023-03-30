@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress  
+metadata:
+  name: jekyll-ingress
+  namespace: jekyll
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "blog.linuxtian.top"
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: jekyll
+            port:
+              number: 4000

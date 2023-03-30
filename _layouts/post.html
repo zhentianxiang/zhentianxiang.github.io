@@ -1,0 +1,60 @@
+---
+layout: default
+---
+
+<head>
+  <link rel="stylesheet" href="{{ "/css/post.css" | prepend: site.baseurl }}">
+  <!-- Link Gitalk 的支持文件 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+  <script src="https://cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script> 
+</head>
+<article class="post-container post-container--single" itemscope itemtype="http://schema.org/BlogPosting">
+  <header class="post-header">
+    <h1 class="post-title">{{ page.title }}</h1>
+    <div class="post-meta">
+      <img src="/images/calendar.png" width="20px"/> 
+      <time datetime="{{page.date | date: date_to_xmlschema}}" itemprop="datePublished" class="post-meta__date date">{{page.date | date: "%F"}}</time>  
+      <span id="busuanzi_container_page_pv"> | 阅读：<span id="busuanzi_value_page_pv"></span>次</span>
+    </p>
+    </div>
+  </header>
+
+<%@ include file="top.html" %>
+
+
+  {% if site.enableToc %}
+    <h2 class="post-title">目录</h2>
+    {% include toc.html html=content %}
+  {% endif %}
+
+  <!-- 在正文开头添加网易云音乐插件 -->
+  {% if page.music-id %}
+    {% include cloud-music.html %}
+  {% endif %}
+
+  <section class="post">
+    {{ content }}
+  </section>
+
+  <!-- Gitalk 评论 start  -->
+  <div id="gitalk-container"></div>
+      <script type="text/javascript">
+      var title = location.pathname.substr(0, 50);//截取路径的前50个字符作为标识符
+      var gitalk = new Gitalk({
+      // gitalk的主要参数
+          clientID: `4282c1c4299772f4af5b`,
+          clientSecret: `afa4d1b78e96a0a51e67221df8b86ddc390f945e`,
+          repo: `blog.linuxtian.top`,
+          owner: 'zhentianxiang',
+          admin: ['zhentianxiang'],
+          id: title,//因为这里不能超过50字符，所以做了处理，当超过50时自动截取前50
+          proxy: `/github/login/oauth/access_token`,
+      });
+      gitalk.render('gitalk-container');
+      </script>
+  <!-- Gitalk end -->
+
+
+</article>
+{% include new-old.html %}
+{% include comments.html %}

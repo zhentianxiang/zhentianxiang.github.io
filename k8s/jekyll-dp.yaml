@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jekyll
+  namespace: jekyll
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jekyll
+  template:
+    metadata:
+      labels:
+        app: jekyll
+    spec:
+      containers:
+      - name: jekyll
+        image: zhentianxiang/jekyll-ruby2.6.0:v1.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: LANG
+          value: C.UTF-8
+        ports:
+        - containerPort: 4000
+          protocol: TCP
+        # 存活探针
+        resources:
+          requests:
+            memory: 50Mi
+            cpu: 50m
+        livenessProbe:
+          tcpSocket:    # httpGet请求方式
+            port: 4000  # 请求端口
+          initialDelaySeconds: 15  # 指定探针后多少秒后启动，也可以是容器启动5秒后开始探测
+          periodSeconds: 5     # 第一次探测结束后，等待多少时间后对容器再次进行探测
+          successThreshold: 1 # 探测失败到成功的重试次数，也就是1次失败后直接重启容器，针对于livenessProbe
+          timeoutSeconds: 3    # 单次探测超时时间
+        # 就绪性探针
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 4000
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          failureThreshold: 3  # 探测成功到失败的重试次数，3次失败后会将容器挂起，不提供访问流量
+          timeoutSeconds: 3
+        volumeMounts:
+          - name: jeyll-data
+            mountPath: "/myBlog/"
+          - name: host-time
+            mountPath: /etc/localtime
+            readOnly: true
+      volumes:
+      - name: jeyll-data
+        hostPath:
+          path: "/myBlog/"
+      - name: host-time
+        hostPath:
+          path: /etc/localtime
+      restartPolicy: Always
