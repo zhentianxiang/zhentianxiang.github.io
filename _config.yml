@@ -6,7 +6,8 @@ description: 欢迎来到我的个人博客~
 avatarTitle: 云原生
 # 头像里面的描述
 avatarDesc: Linux / Kubernetes
-url: "https://blog.linuxtian.top"
+#url: "https://blog.linuxtian.top"
+url: "https://zhentianxiang.github.io"
 
 # 博客是否自动生成目录，false为不生成，true为生成
 enableToc: true
@@ -37,7 +38,7 @@ ga:
 #
 #
 #  _post/ 下的文章更换成你自己的文章
-#  帮忙star一下，感谢~😆 地址： https://github.com/leopardpan/leopardpan.github.io
+#  帮忙star一下，感谢~😆 地址： hhttps://zhentianxiang.github.io
 #
 #
 # 《--------------- 下面的信息可以自行选择是否修改 ------------------------》
