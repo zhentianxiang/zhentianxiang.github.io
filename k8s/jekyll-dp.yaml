@@ -23,13 +23,13 @@ spec:
         ports:
         - containerPort: 4000
           protocol: TCP
-        # 存活探针
         resources:
           requests:
             memory: 50Mi
             cpu: 50m
+        # 存活探针
         livenessProbe:
-          tcpSocket:    # httpGet请求方式
+          tcpSocket:    # 端口请求方式
             port: 4000  # 请求端口
           initialDelaySeconds: 15  # 指定探针后多少秒后启动，也可以是容器启动5秒后开始探测
           periodSeconds: 5     # 第一次探测结束后，等待多少时间后对容器再次进行探测
