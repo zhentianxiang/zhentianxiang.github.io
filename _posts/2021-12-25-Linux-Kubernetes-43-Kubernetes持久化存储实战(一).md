@@ -64,6 +64,8 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: nginx-pv
+  labels:
+    app: nginx-pv
 spec:
   capacity:
     storage: 10Gi
@@ -91,7 +93,10 @@ spec:
   resources:
     requests:
       storage: 10Gi
-  storageClassName: nfs   #名字相同
+  storageClassName: nfs
+  selector:
+    matchLabels:
+      app: nginx-pv    # pv 的 labels
 EOF
 ```
 
