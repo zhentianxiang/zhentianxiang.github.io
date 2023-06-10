@@ -450,18 +450,10 @@ The key's randomart image is:
 id_rsa  id_rsa.pub  known_hosts
 ```
 
-拷贝公钥到其他机器上，然后三台机器均同样操作
+拷贝公钥到3台机器上
 
 ```sh
-[root@ceph-01 ~]# scp ~/.ssh/id_rsa.pub 192.168.1.134:~/.ssh/
-root@192.168.1.186's password:
-scp: /root/.ssh/: Is a directory
-# 提示找不到这个目录就去ceph-02机器上执行以下`ssh localhost`
-[root@ceph-01 ~]# scp ~/.ssh/id_rsa.pub 192.168.1.134:~/.ssh/
-root@192.168.1.186's password:
-id_rsa.pub
-# 切换到ceph-02
-[root@ceph-02 ~]# cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+[root@ceph-01 ~]# ssh-copy-id -i ~/.ssh/id_rsa.pub 192.168.1.134:~/.ssh/
 ```
 
 验证ssh免密登录，都要验证一遍
@@ -503,6 +495,12 @@ baseurl=http://mirrors.aliyun.com/ceph/rpm-nautilus/el7/SRPMS
 enabled=1
 gpgcheck=0
 priority=1
+```
+
+配置 epel 源
+
+```sh
+[root@ceph-01 ~]# wget -O /etc/yum.repos.d/epel-7.repo http://mirrors.aliyun.com/repo/epel-7.repo
 ```
 
 ### 3. 安装组件并配置
@@ -578,7 +576,7 @@ HEALTH_WARN mon is allowing insecure glabal_id reclaim
     usage:   0 B used, 0 B / 0 B avail
     pgs:
 # 禁用不安全模式
-[root@ceph-01 ceph]# ceph config set mon auth_allow_insecure_glabal_id_reclaim false
+[root@ceph-01 ceph]# ceph config set mon auth_allow_insecure_global_id_reclaim false
 [root@ceph-01 ceph]# ceph health
 HEALTH_OK
 [root@ceph-01 ceph]#  ceph -s
@@ -787,6 +785,7 @@ mon_max_pg_per_osd = 2000
 # 把配置同步到其他的mon节点，然后重启服务
 [root@ceph-01 ceph]# ceph-deploy --overwrite-conf admin ceph-01 ceph-02 ceph-03
 # 三台机器都要重启
+[root@ceph-01 ceph]# systemctl restart ceph-mon.target
 [root@ceph-01 ceph]# systemctl status ceph-mon.target
 ```
 
@@ -1083,8 +1082,6 @@ rbd_pool
 
 ```sh
 [root@ceph-01 ceph]# rbd create volume1 --pool rbd_pool --size 500
-[root@ceph-01 ceph]# rbd ls
-rbd: error opening default pool 'rbd'
 [root@ceph-01 ceph]# rbd ls rbd_pool
 volume1
 [root@ceph-01 ceph]# rbd info volume1 -p rbd_pool

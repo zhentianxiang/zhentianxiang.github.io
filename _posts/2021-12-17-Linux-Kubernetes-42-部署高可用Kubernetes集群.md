@@ -370,7 +370,7 @@ vrrp_instance VI_1 {
 ```sh
 [root@k8s-cluster-master01 ~]# cat  /etc/keepalived/check_nginx.sh
 #!/bin/bash
-count=$(ss -antp |grep 16443 |egrep -cv "grep|$$")
+count=$(netstat -lntp|grep 16443 |egrep -cv "grep|$$")
 
 if [ "$count" -eq 0 ];then
     exit 1
