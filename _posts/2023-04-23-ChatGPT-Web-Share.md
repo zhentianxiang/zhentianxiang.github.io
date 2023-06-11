@@ -131,6 +131,10 @@ sync_conversations_regularly: yes # 是否定期（每隔12小时）从账号中
 
 因为我的机器无法正常访问外网，所以添加了环境变量进行代理http
 
+如果使用环境变量还是不行的话只能用境外服务器了,重要的一个服务是chatgpt-proxy-server,只要这个服务能正常启动平台就ok
+
+我自己是将chatgpt-proxy-server这个服务部署到境外服务器上了,然后后面的容器修改对应的启动参数去连接这个服务的9515端口即可
+
 ```sh
 $ docker run -dti --name chatgpt-proxy-server -p 9515:9515 -e http_proxy="http://10.0.16.9:7890" -e https_proxy="http://10.0.16.9:7890" -e all_proxy="socks5://10.0.16.9:7890" --restart=always zhentianxiang/chatgpt-proxy-server:v0.3.14
 ```
@@ -314,7 +318,8 @@ spec:
         - name: GIN_MODE
           value: release
         - name: CHATGPT_PROXY_SERVER
-          value: http://chatgpt-proxy:9515
+        # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
+          value: http://107.172.5.13:9515
         - name: all_proxy
           value: "socks5://10.0.16.9:7890"
         ports:
@@ -368,11 +373,11 @@ spec:
 web-share
 
 ```sh
-[root@VM-16-9-centos chatgpt-share]# cat chatgpt-share-cm.yaml 
+[root@VM-16-9-centos chatgpt-web-share]# cat chatgpt-web-share-cm.yaml 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: chatgpt-share-config
+  name: chatgpt-web-share-config
   namespace: chatgpt
 data:
   config.yaml: |
@@ -395,7 +400,8 @@ data:
     chatgpt_paid: false # 是否为 ChatGPT Plus 用户
     # 注意：如果你希望使用公共代理，或使用整合的 go-proxy-api，请保持注释；如果需要自定义，注意最后一定要有一个斜杠
     # 在实际请求时，chatgpt_base_url 优先级为：config 内定义 > 环境变量 > revChatGPT 内置的公共代理
-    # chatgpt_base_url: http://公网ip或者docker网络ip:6060/
+    # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
+    #chatgpt_base_url: http://10.0.16.9:32318/
     log_dir: /app/logs # 日志存储位置，不要随意修改
     console_log_level: DEBUG # 日志等级，设置为 DEBUG 能够获得更多信息
     # 以下用于统计，如不清楚可保持默认
@@ -406,33 +412,34 @@ data:
 ```
 
 ```sh
-[root@VM-16-9-centos chatgpt-share]# cat chatgpt-share-dp.yaml 
+[root@VM-16-9-centos chatgpt-web-share]# cat chatgpt-web-share-dp.yaml 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: chatgpt-share
+  name: chatgpt-web-share
   namespace: chatgpt
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: chatgpt-share
+      app: chatgpt-web-share
   template:
     metadata:
       labels:
-        app: chatgpt-share
+        app: chatgpt-web-share
     spec:
       containers:
-      - name: chatgpt-share
+      - name: chatgpt-web-share
         image: zhentianxiang/chatgpt-web-share:v0.3.14
         imagePullPolicy: IfNotPresent
         env:
+        # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
         - name: CHATGPT_BASE_URL
-          value: http://chatgpt-api:8080
+          value: http://10.0.16.9:32318/
         - name: all_proxy
           value: "socks5://10.0.16.9:7890"
         ports:
-        - name: chatgpt-share
+        - name: web
           protocol: TCP
           containerPort: 80
         resources:
@@ -462,33 +469,36 @@ spec:
           failureThreshold: 3  # 探测成功到失败的重试次数，3次失败后会将容器挂起，不提供访问流量
           timeoutSeconds: 10
         volumeMounts:
-          - name: chatgpt-share-config
-            mountPath: /app/backend/api/config/
-          - name: chatgpt-share-data
+          - name: chatgpt-web-share-config
+            mountPath: /app/backend/api/config/config.yaml
+          - name: chatgpt-web-share-data
             mountPath: /data
           - name: host-time
             mountPath: /etc/localtime
             readOnly: true              
       volumes:
-      - name: chatgpt-share-config
+      - name: chatgpt-web-share-config
         configMap:
-          name: chatgpt-share-config
+          name: chatgpt-web-share-config
+          items:
+            - key: 'config.yaml'
+              path: 'config.yaml'
           defaultMode: 493
       - name: host-time
         hostPath:
           path: /etc/localtime
-      - name: chatgpt-share-data
+      - name: chatgpt-web-share-data
         persistentVolumeClaim:
-          claimName: chatgpt-share-data                           
+          claimName: chatgpt-web-share-data                           
       restartPolicy: Always
 ```
 
 ```sh
-[root@VM-16-9-centos chatgpt-share]# cat chatgpt-share-pvc.yaml 
+[root@VM-16-9-centos chatgpt-web-share]# cat chatgpt-web-share-pvc.yaml 
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: chatgpt-share-data
+  name: chatgpt-web-share-data
   namespace: chatgpt
   annotations:
     volume.beta.kubernetes.io/storage-class: "nfs-provisioner-storage"
@@ -501,16 +511,16 @@ spec:
 ```
 
 ```sh
-[root@VM-16-9-centos chatgpt-share]# cat chatgpt-share-svc.yaml 
+[root@VM-16-9-centos chatgpt-web-share]# cat chatgpt-web-share-svc.yaml 
 apiVersion: v1
 kind: Service
 metadata:
-  name: chatgpt-share
+  name: chatgpt-web-share
   namespace: chatgpt
 spec:
   type: NodePort
   selector:
-    app: chatgpt-share
+    app: chatgpt-web-share
   ports:
     - protocol: TCP
       port: 80

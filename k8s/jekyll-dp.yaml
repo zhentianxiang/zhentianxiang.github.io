@@ -47,14 +47,14 @@ spec:
           timeoutSeconds: 3
         volumeMounts:
           - name: jeyll-data
-            mountPath: "/myBlog/"
+            mountPath: "/myBlog/jekyll-template"
           - name: host-time
             mountPath: /etc/localtime
             readOnly: true
       volumes:
       - name: jeyll-data
         hostPath:
-          path: "/myBlog/"
+          path: "/home/tianxiang/zhentianxiang.github.io/"
       - name: host-time
         hostPath:
           path: /etc/localtime
