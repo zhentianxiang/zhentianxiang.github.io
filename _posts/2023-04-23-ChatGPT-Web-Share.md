@@ -319,7 +319,7 @@ spec:
           value: release
         - name: CHATGPT_PROXY_SERVER
         # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
-          value: http://107.172.5.13:9515
+          value: "http://107.172.5.13:9515"
         - name: all_proxy
           value: "socks5://10.0.16.9:7890"
         ports:
@@ -435,7 +435,7 @@ spec:
         env:
         # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
         - name: CHATGPT_BASE_URL
-          value: http://10.0.16.9:32318/
+          value: "http://10.0.16.9:32318/"
         - name: all_proxy
           value: "socks5://10.0.16.9:7890"
         ports:
