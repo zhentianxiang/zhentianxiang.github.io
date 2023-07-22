@@ -574,3 +574,72 @@ server {
 }
 [root@VM-16-9-centos conf.d]# systemctl restart nginx
 ```
+
+如果想用 https，如下
+
+```sh
+# 使用ACME自签证书，更多详情请看：https://www.panyanbin.com/article/c44653d8.html
+[root@VM-16-9-centos conf.d]# curl  https://get.acme.sh | sh
+[root@VM-16-9-centos conf.d]# ln -s  /root/.acme.sh/acme.sh /usr/local/bin/acme.sh
+[root@VM-16-9-centos conf.d]# acme.sh --set-default-ca  --server  letsencrypt
+[root@VM-16-9-centos conf.d]# acme.sh  --issue -d chatgpt.linuxtian.top -k ec-256 --nginx
+[root@VM-16-9-centos conf.d]# mkdir -pv /etc/nginx/certs/chatgpt.linuxtian.top
+[root@VM-16-9-centos conf.d]# cp /root/.acme.sh/chatgpt.linuxtian.top_ecc/chatgpt.linuxtian.top.cer /etc/nginx/certs/chatgpt.linuxtian.top
+[root@VM-16-9-centos conf.d]# cp /root/.acme.sh/chatgpt.linuxtian.top_ecc/chatgpt.linuxtian.top.key /etc/nginx/certs/chatgpt.linuxtian.top
+
+# 配置conf文件
+[root@VM-16-9-centos conf.d]# vim /etc/nginx/conf.d/chatgpt-web-share.conf
+server {
+        listen 80;
+        server_name chatgpt.linuxtian.top;
+        return 301 https://chatgpt.linuxtian.top$request_uri;
+}
+
+server {
+        listen 443 ssl;
+        server_name chatgpt.linuxtian.top;
+        access_log  /var/log/nginx/chatgpt/access.log  main;
+        error_log   /var/log/nginx/chatgpt/error.log;
+
+        ssl_certificate /etc/nginx/cert/chatgpt.linuxtian.top/chatgpt.linuxtian.top.cer;
+        ssl_certificate_key /etc/nginx/cert/chatgpt.linuxtian.top/chatgpt.linuxtian.top.key;
+        ssl_session_timeout 5m;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_prefer_server_ciphers on;
+
+
+
+  location / {
+      sendfile off;
+      proxy_pass         http://chatgpt-web-share;
+      proxy_redirect     default;
+      proxy_http_version 1.1;
+
+      # Required for Jenkins websocket agents
+      proxy_set_header   Connection        $connection_upgrade;
+      proxy_set_header   Upgrade           $http_upgrade;
+
+      proxy_set_header   Host              $http_host;
+      proxy_set_header   X-Real-IP         $remote_addr;
+      proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+      proxy_set_header   X-Forwarded-Proto $scheme;
+      proxy_max_temp_file_size 0;
+
+      #this is the maximum upload size
+      client_max_body_size       10m;
+      client_body_buffer_size    128k;
+
+      proxy_connect_timeout      90;
+      proxy_send_timeout         90;
+      proxy_read_timeout         90;
+      proxy_buffering            off;
+      proxy_request_buffering    off; # Required for HTTP CLI commands
+      proxy_set_header Connection ""; # Clear for keepalive
+      }
+}
+[root@VM-16-9-centos conf.d]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+[root@VM-16-9-centos conf.d]# nginx -s reload
+```

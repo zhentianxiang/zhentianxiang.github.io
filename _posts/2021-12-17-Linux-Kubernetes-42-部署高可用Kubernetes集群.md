@@ -149,7 +149,7 @@ net.ipv4.ip_forward = 1
 ### 7. 安装基础程序
 
 ```sh
-[root@k8s-cluster-master01 ~]# yum install -y vim net-tools telnet chrony bash-completion wget tree nmap sysstat lrzsz dos2unix bind-utils less pciutils ntpdate ipset ipvsadm
+[root@k8s-cluster-master01 ~]# yum install -y vim net-tools telnet chrony bash-completion wget zip unzip tree nmap sysstat lrzsz dos2unix bind-utils less pciutils ntpdate ipset ipvsadm
 ```
 
 ### 8. 如何使用ipvs作为流量转发，那么如下
@@ -684,11 +684,22 @@ kubeadm 安装的集群，etcdctl命令如下
 [root@k8s-cluster-master01 ~]# vim /etc/docker/daemon.json
 # docker存储目录根据实际情况修改
 {
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io"],
-  "registry-mirrors": ["https://q2gr04ke.mirror.aliyuncs.com"],
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
+    "graph": "/var/lib/docker",
+    "registry-mirrors": [
+      "https://hub-mirror.c.163.com",
+      "https://mirror.baidubce.com",
+      "https://docker.mirrors.ustc.edu.cn"
+    ],
+    "insecure-registries": [
+        "harbor.hyper.com"
+    ],
+    "live-restore": true,
+    "exec-opts": ["native.cgroupdriver=systemd"],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m",
+        "max-file": "10"
+    }
 }
 [root@k8s-cluster-master01 ~]# systemctl daemon-reload
 [root@k8s-cluster-master01 ~]# systemctl restart docker
@@ -700,19 +711,28 @@ kubeadm 安装的集群，etcdctl命令如下
 ```
 ```#!/bin/sh
 {
-  "runtimes": {
-    "nvidia": {
-      "path": "/usr/bin/nvidia-container-runtime",
-      "runtimeArgs": []
+    "runtimes": {
+        "nvidia": {
+            "path": "/usr/bin/nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    },
+    "graph": "/var/lib/docker",
+    "default-runtime": "nvidia",
+    "registry-mirrors": [
+        "https://registry.docker-cn.com",
+        "https://docker.mirrors.ustc.edu.cn"
+    ],
+    "insecure-registries": [
+        "harbor.hyper.com"
+    ],
+    "live-restore": true,
+    "exec-opts": ["native.cgroupdriver=systemd"],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m",
+        "max-file": "10"
     }
-  },
-  "default-runtime": "nvidia",
-  "graph": "/home/docker",
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io"],
-  "registry-mirrors": ["https://registry.docker-cn.com","https://docker.mirrors.ustc.edu.cn"],
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
 }
 ```
 
@@ -1175,7 +1195,7 @@ Commercial support is available at
 --control-plane-endpoint=192.168.1.200:16443 \
 --apiserver-bind-port=6443 \
 --kubernetes-version=v1.18.19 \
---pod-network-cidr=10.100.0.0/16 \
+--pod-network-cidr=172.16.0.0/16 \
 --image-repository=registry.cn-hangzhou.aliyuncs.com/google_containers \
 --ignore-preflight-errors=swap
 ```

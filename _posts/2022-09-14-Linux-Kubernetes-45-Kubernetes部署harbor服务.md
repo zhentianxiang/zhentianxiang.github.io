@@ -205,17 +205,16 @@ EOF
 
 ### 1. 部署 pgo 服务
 
-[k8s_harbor_v2.4.3.tar.xz](https://pan.baidu.com/s/1MSmDJ7L01bI0Sa–SlA_ng?pwd=c1j5)提取码：c1j5
+[helm-harbor.tar.gz](https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/helm-harbor.tar.gz)
 
-[helm-v3.9.3-linux-amd64.tar.gz](https://pan.baidu.com/s/1BEG3VPVDrPgQmVxdCPcTgQ?pwd=jw1b)提取码：jw1b
+[helm-v3.9.3-linux-amd64.tar.gz](https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/helm-v3.9.3-linux-amd64.tar.gz)
 
 导入镜像
 
 ```sh
-[root@kubesphere app]# mkdir harbor-helm
-[root@kubesphere app]# xz -d k8s_harbor_v2.4.3.tar.xz
-[root@kubesphere app]# tar xvf k8s_harbor_v2.4.3.tar -C harbor-helm
-[root@kubesphere app]# cd harbor-helm/images/harbor/
+[root@kubesphere app]# mkdir helm-harbor
+[root@kubesphere app]# tar xvf helm-harbor.tar.gz
+[root@kubesphere app]# cd helm-harbor/images/harbor/
 [root@kubesphere harbor]# ./import.sh docker
 [root@kubesphere harbor]# cd ../pgo/
 [root@kubesphere pgo]# ./import.sh docker
@@ -460,14 +459,14 @@ redis-redis-ha-server-2   3/3     Running   0          18d
 
 ```sh
 [root@kubesphere redis-ha]# cd ../harbor/harbor-1.8.3/
-[root@VM-16-9-centos helm-harbor]# kubectl get secrets -n postgres harbor-pguser-harbor  -o yaml |grep password: |sed 's/^[ \t]*//g'|awk '{print $2}'|base64 --decode
+[root@VM-16-9-centos helm-harbor]# kubectl get secrets -n postgres harbor-pguser-harbor -o json | jq -r '.data.password' | base64 --decode
 MksG^-5s.^NDR+>ZT]Xj>]Uf[root@VM-16-9-centos helm-harbor]#
 ```
 
 **获取 host 的 svc**
 
 ```sh
-[root@VM-16-9-centos helm-harbor]# kubectl get secrets -n postgres harbor-pguser-harbor  -o yaml |grep host: |head -n 1 |sed 's/^[ \t]*//g'|awk '{print $2}'|base64 --decode
+[root@VM-16-9-centos helm-harbor]# kubectl get secrets -n postgres harbor-pguser-harbor -o json | jq -r '.data.host'| base64 --decode
 harbor-primary.postgres.svc[root@kubesphere harbor-1.8.3]#
 ```
 

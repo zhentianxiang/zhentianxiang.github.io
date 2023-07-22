@@ -250,37 +250,48 @@ EOF
 修改docker运行环境
 [root@k8s-master ~]# vim /etc/docker/daemon.json
 {
-  "graph": "/data/docker",
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io","registry.aliyuncs.com/google_containers","10.0.0.11:180"],
-  "registry-mirrors": ["https://registry.docker-cn.com"],
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
-}
----
-{
-      "runtimes": {
-          "nvidia": {
-              "path": "/usr/bin/nvidia-container-runtime",
-              "runtimeArgs": []
-          }
-      },
-    "graph": "/home/docker",  #此目录可以自定义找一个空间比较大的目录，不一定非得和我一样
-    "default-runtime": "nvidia",
+    "graph": "/var/lib/docker",
     "registry-mirrors": [
-      "https://registry.docker-cn.com",
-      "https://docker.mirrors.ustc.edu.cn"
+        "https://registry.docker-cn.com",
+        "https://docker.mirrors.ustc.edu.cn"
     ],
-    "insecure-registries": ["harbor.hyper.com"],  #授信的harbor仓库地址，根据自己需求来修改
-    "live-restore": true
-
-    },
-    "exec-opts": ["native.cgroupdriver=systemd"],   #修改docker的驱动程序为systemd
+    "insecure-registries": [
+        "harbor.hyper.com"
+    ],
+    "live-restore": true,
+    "exec-opts": ["native.cgroupdriver=systemd"],
     "log-driver": "json-file",
     "log-opts": {
-        "max-size": "10m",
+        "max-size": "100m",
         "max-file": "10"
     }
+}
+---
+# 安装 nvidia-docker 的用以下
+{
+    "runtimes": {
+        "nvidia": {
+            "path": "/usr/bin/nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    },
+    "graph": "/var/lib/docker",
+    "default-runtime": "nvidia",
+    "registry-mirrors": [
+        "https://registry.docker-cn.com",
+        "https://docker.mirrors.ustc.edu.cn"
+    ],
+    "insecure-registries": [
+        "harbor.hyper.com"
+    ],
+    "live-restore": true,
+    "exec-opts": ["native.cgroupdriver=systemd"],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m",
+        "max-file": "10"
+    }
+}
 
 [root@k8s-master ~]# mkdir /data/docker  #docker数据存储目录，尽量找一个大的空间
 [root@k8s-master ~]# systemctl enable docker && systemctl start docker

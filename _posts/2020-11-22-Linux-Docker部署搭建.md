@@ -16,12 +16,22 @@ tags: Linux-Docker
 # docker存储目录根据实际情况修改
 [root@tianxiang ~]# vim /etc/docker/daemon.json
 {
-  "graph": "/home/docker",
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io"],
-  "registry-mirrors": ["https://q2gr04ke.mirror.aliyuncs.com"],
   "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "graph": "/var/lib/docker",
+  "storage-driver": "overlay2",
+  "insecure-registries": ["10.0.16.9:5000","10.0.16.9:30143"],
+  "registry-mirrors":[
+      "https://kfwkfulq.mirror.aliyuncs.com",
+      "https://2lqq34jg.mirror.aliyuncs.com",
+      "https://pee6w651.mirror.aliyuncs.com",
+      "http://hub-mirror.c.163.com",
+      "https://docker.mirrors.ustc.edu.cn",
+      "https://registry.docker-cn.com"
+  ]
 }
 [root@tianxiang ~]# systemctl daemon-reload
 [root@tianxiang ~]# systemctl restart docker
@@ -39,13 +49,22 @@ tags: Linux-Docker
       "runtimeArgs": []
     }
   },
-  "default-runtime": "nvidia",
-  "graph": "/home/docker",
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io"],
-  "registry-mirrors": ["https://q2gr04ke.mirror.aliyuncs.com"],
   "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "graph": "/var/lib/docker",
+  "storage-driver": "overlay2",
+  "insecure-registries": ["10.0.16.9:5000","10.0.16.9:30143"],
+  "registry-mirrors":[
+      "https://kfwkfulq.mirror.aliyuncs.com",
+      "https://2lqq34jg.mirror.aliyuncs.com",
+      "https://pee6w651.mirror.aliyuncs.com",
+      "http://hub-mirror.c.163.com",
+      "https://docker.mirrors.ustc.edu.cn",
+      "https://registry.docker-cn.com"
+  ]
 }
 [root@tianxiang ~]# systemctl daemon-reload docker
 [root@tianxiang ~]# systemctl restart docker
