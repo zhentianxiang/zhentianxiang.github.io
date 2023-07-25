@@ -88,67 +88,74 @@ Token获取: https://chat.openai.com/api/auth/session
 config.yaml
 
 ```yaml
-print_sql: false
-host: "127.0.0.1"
-port: 8000
-data_dir: /data # <------ v0.3.0 以上新增
-database_url: "sqlite+aiosqlite:////data/database.db" # 特别注意：这里有四个斜杠，代表着文件位于 /data 目录，使用的是绝对路径
-run_migration: false # 是否在启动时运行数据库迁移，目前没有必要启用
-
-jwt_secret: "test" # 用于生成 jwt token，自行填写随机字符串
-jwt_lifetime_seconds: 86400 # jwt token 过期时间
-cookie_max_age: 86400 # cookie 过期时间
-user_secret: "test" # 用于生成用户密码，自行填写随机字符串
-
-sync_conversations_on_startup: true # 是否在启动时同步同步 ChatGPT 对话，建议启用。启用后，将会自动将 ChatGPT 中新增的对话同步到数据库中，并把已经不在 ChatGPT 中的对话标记为无效
-create_initial_admin_user: true # 是否创建初始管理员用户
-initial_admin_username: admin # 初始管理员用户名
-initial_admin_password: password # 初始管理员密码
-ask_timeout: 600    # 用于限制对话的最长时间
-
-chatgpt_access_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJ6aGVubW91cmVuZXJAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItUDdZYUpBRVhxQm1oaThJdXRwbTM2S3JiIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMDQ5Njg3ODQ5ODYxMTI4MzUzOSIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkub3BlbmFpLmF1dGgwYXBwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2ODA5NTQ0OTAsImV4cCI6MTY4MjE2NDA5MCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.xLSeptVDPBMdC72T70PyrbxFS1-Bj9ZRm3OCaKwjyyyH3WU6zClw99E1bjNYTIenI9GMzjGZwFajj1BpAT61c18vmR5H7Idi3_IUJ3ZdrVipAhR5LQk1bZGVk2W34i4w-LzK4H3qN-5Eg0d8_EsJJzDea3yhNgs81bU-tplbBHM2JRCNe8cWjaltdMVJzSgTcxeWduBfoFclIK7RmCM-sHpAMy_JcmNKJafEycBqxJUp8rOjKUd3444Y8HBH7VETmZBEUIYkFoPS4onaT9Xkw-N5zUMlE5u2hxrRHfdAcZqQN2049DGUG3myk4k3_hxdnfNf42BWmjPjWcG0bT7eRQ" # 需要从 ChatGPT 获取，见后文
-chatgpt_paid: false # 是否为 ChatGPT Plus 用户
-
-# 注意：如果你希望使用公共代理，或使用整合的 go-proxy-api，请保持注释；如果需要自定义，注意最后一定要有一个斜杠
-# 在实际请求时，chatgpt_base_url 优先级为：config 内定义 > 环境变量 > revChatGPT 内置的公共代理
-# chatgpt_base_url: http://127.0.0.1:8080/
-
-log_dir: /app/logs # 日志存储位置，不要随意修改
-console_log_level: DEBUG # 日志等级，设置为 DEBUG 能够获得更多信息
-
-# 以下用于统计，如不清楚可保持默认
-request_log_counter_time_window: 2592000 # 请求日志时间范围，默认为最近 30 天
-request_log_counter_interval: 1800 # 请求日志统计粒度，默认为 30 分钟
-ask_log_time_window: 2592000 # 对话日志时间范围，默认为最近 7 天
-sync_conversations_regularly: yes # 是否定期（每隔12小时）从账号中同步一次对话
+penai_web:
+  is_plus_account: true
+  # 注意用户名密码和地址，这里配置了的话环境变量就不需要指定了
+  chatgpt_base_url: http://10.0.16.9:8080/chatgpt/backend-api/
+  common_timeout: 10
+  ask_timeout: 600
+openai_api:
+  openai_base_url: https://api.openai.com/v1/
+  proxy:
+  connect_timeout: 10
+  read_timeout: 20
+common:
+  print_sql: true
+  create_initial_admin_user: true
+  initial_admin_user_username: admin
+  initial_admin_user_password: password
+  sync_conversations_on_startup: true
+  sync_conversations_regularly: true
+http:
+  host: 127.0.0.1
+  port: 8000
+  cors_allow_origins:
+  - http://localhost
+  - http://127.0.0.1
+data:
+  data_dir: /data
+  database_url: sqlite+aiosqlite:///data/database.db
+  # 注意用户密码和地址
+  mongodb_url: mongodb://cws:password@chatgpt-mongodb:27017
+  run_migration: true
+auth:
+  jwt_secret: MODIFY_THIS_TO_RANDOM_SECRET
+  jwt_lifetime_seconds: 86400
+  cookie_max_age: 86400
+  cookie_name: user_auth
+  user_secret: MODIFY_THIS_TO_RANDOM_SECRET
+stats:
+  ask_stats_ttl: 7776000
+  request_stats_ttl: 2592000
+  request_stats_filter_keywords:
+  - /status
+log:
+  console_log_level: INFO
 ```
 
 ## 二、docker 启动
 
 ### 1. 手动启动
 
-启动 proxy
-
-因为我的机器无法正常访问外网，所以添加了环境变量进行代理http
-
-如果使用环境变量还是不行的话只能用境外服务器了,重要的一个服务是chatgpt-proxy-server,只要这个服务能正常启动平台就ok
-
-我自己是将chatgpt-proxy-server这个服务部署到境外服务器上了,然后后面的容器修改对应的启动参数去连接这个服务的9515端口即可
+启动 mongodb
 
 ```sh
-$ docker run -dti --name chatgpt-proxy-server -p 9515:9515 -e http_proxy="http://10.0.16.9:7890" -e https_proxy="http://10.0.16.9:7890" -e all_proxy="socks5://10.0.16.9:7890" --restart=always zhentianxiang/chatgpt-proxy-server:v0.3.14
+$ docker run -dti --name chatgpt-mongodb -p 27017:27017 -e MONGO_INITDB_DATABASE=cws -e MONGO_INITDB_ROOT_USERNAME=cws -e MONGO_INITDB_ROOT_PASSWORD=password --restart=always mongo:6.0
 ```
+
+因为我的机器无法正常访问外网，所以添加了环境变量进行代理http
 
 启动 api-server
 
 ```sh
-$ docker run -dti --name chatgpt-api-server -p 8080:8080 -e GIN_MODE=release -e CHATGPT_PROXY_SERVER=http://10.0.16.9:9515 -e http_proxy="http://10.0.16.9:7890" -e https_proxy="http://10.0.16.9:7890" -e all_proxy="socks5://10.0.16.9:7890" --restart=always zhentianxiang/go-chatgpt-api:v0.3.14
+$ docker run -dti --name chatgpt-api-server -p 8080:8080 -e PROXY="socks5://10.0.16.9:7890" -e TZ=Asia/Shanghai --restart=always linweiyuan/go-chatgpt-api:latest
 ```
 
 启动 share-web
 
 ```sh
-$ docker run -dit --name chatgpt-web-share -p 80:80 -v `pwd`/data:/data -v `pwd`/logs:/app/logs -v `pwd`/config.yaml:/app/backend/api/config/config.yaml -e TZ=Asia/Shanghai -e CHATGPT_BASE_URL=http://10.0.16.9:8080/ -e http_proxy="http://10.0.16.9:7890" -e https_proxy="http://10.0.16.9:7890" -e all_proxy="socks5://10.0.16.9:7890" --restart=always zhentianxiang/chatgpt-web-share:v0.3.14
+$ mkdir data/config -pv
+$ docker run -dit --name chatgpt-web-share -p 80:80 -v `pwd`/data:/app/backend/data/config/ -e TZ=Asia/Shanghai -e CHATGPT_BASE_URL=http://10.0.16.9:8080/ --restart=always moeakwak/chatgpt-web-share:0.4.0-alpha4.4
 ```
 
 ```sh
@@ -157,51 +164,46 @@ $ docker ps |grep -E "web-share|proxy-server|api-server"
 
 ### 2. docker-compose 启动
 
+```sh
+$ mkdir data/config -pv
+```
+
 ```yaml
 version: "3"
 
 services:
   chatgpt-web-share:
-    image: zhentianxiang/chatgpt-web-share:v0.3.14
+    image: moeakwak/chatgpt-web-share:0.4.0-alpha4.4
     restart: always
     ports:
-      - 8080:80 # web 端口号
+      - 80:80 # web 端口号
     volumes:
-      - ./data:/data # 存放数据库文件以及统计数据
-      - ./config.yaml:/app/backend/api/config/config.yaml # 后端配置文件
-      - ./logs:/app/logs # 存放日志文件
-    environment:
-      - http_proxy="http://10.0.16.9:7890"
-      - https_proxy="http://10.0.16.9:7890"
-      - all_proxy="socks5://10.0.16.9:7890"
+      - ./data:/app/backend/data/
+    environment::
       - TZ=Asia/Shanghai
-      - CHATGPT_BASE_URL=http://10.0.16.9:8081/
-    depends_on:
-      - chatgpt-api-server
+      - CWS_CONFIG_DIR=/app/backend/data/config
+      - CHATGPT_BASE_URL=http://10.0.16.9:8081/chatgpt/backend-api
+    restart: unless-stopped
 
   chatgpt-api-server:
-    image: zhentianxiang/go-chatgpt-api:v0.3.14
+    image: linweiyuan/go-chatgpt-api:latest
     ports:
       - 8081:8080 # 如果你需要暴露端口如一带多，可以取消注释
     environment:
-      - http_proxy="http://10.0.16.9:7890"
-      - https_proxy="http://10.0.16.9:7890"
-      - all_proxy="socks5://10.0.16.9:7890"
-      - GIN_MODE=release
-      - CHATGPT_PROXY_SERVER=http://10.0.16.9:9515
-      # - NETWORK_PROXY_SERVER=http://host:port
+      - PROXY="socks5://10.0.16.9:7890"
     depends_on:
       - chatgpt-proxy-server
     restart: unless-stopped
 
-  chatgpt-proxy-server:
-    image: zhentianxiang/chatgpt-proxy-server:v0.3.14
-    ports:
-      - 9515:9515
+  chatgpt-mongo:
+    image: mongo:6.0
+    restart: always
+    volumes:
+      - ./mongo_data:/data/db
     environment:
-      - http_proxy="http://10.0.16.9:7890"
-      - https_proxy="http://10.0.16.9:7890"
-      - all_proxy="socks5://10.0.16.9:7890"
+      MONGO_INITDB_DATABASE: cws
+      MONGO_INITDB_ROOT_USERNAME: cws
+      MONGO_INITDB_ROOT_PASSWORD: password
     restart: unless-stopped
 ```
 
@@ -210,87 +212,6 @@ $ docker-compose up -d
 ```
 
 ## 三、k8s 启动
-
-proxy 服务
-
-```sh
-[root@VM-16-9-centos chatgpt-proxy]# cat chatgpt-proxy-dp.yaml 
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: chatgpt-proxy
-  namespace: chatgpt
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: chatgpt-proxy
-  template:
-    metadata:
-      labels:
-        app: chatgpt-proxy
-    spec:
-      containers:
-      - name: chatgpt-proxy
-        image: zhentianxiang/chatgpt-proxy-server:v0.3.14
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: chatgpt-proxy
-          containerPort: 9515
-          protocol: TCP
-        env:
-        - name: all_proxy
-          value: "socks5://10.0.16.9:7890"
-        resources:
-          limits:
-            cpu: 50m
-            memory: 500Mi
-          requests:
-            cpu: 50m
-            memory: 50Mi
-        # 存活探针
-        livenessProbe:
-          tcpSocket:
-            port: 9515
-          initialDelaySeconds: 15  # 指定探针后多少秒后启动，也可以是容器启动15秒后开始探测
-          periodSeconds: 3     # 第一次探测结束后，等待多少时间后对容器再次进行探测
-          successThreshold: 1 # 探测失败到成功的重试次数，也就是1次失败后直接重启容器，针对于livenessProbe
-          timeoutSeconds: 10    # 单次探测超时时间
-        # 就绪性探针
-        readinessProbe:
-          tcpSocket:
-            port: 9515
-          initialDelaySeconds: 15
-          periodSeconds: 3
-          failureThreshold: 3  # 探测成功到失败的重试次数，3次失败后会将容器挂起，不提供访问流量
-          timeoutSeconds: 10
-        volumeMounts:
-          - name: host-time
-            mountPath: /etc/localtime
-            readOnly: true              
-      volumes:
-      - name: host-time
-        hostPath:
-          path: /etc/localtime
-      restartPolicy: Always
-```
-
-```sh
-[root@VM-16-9-centos chatgpt-proxy]# cat chatgpt-proxy-svc.yaml 
-apiVersion: v1
-kind: Service
-metadata:
-  name: chatgpt-proxy
-  namespace: chatgpt
-spec:
-  type: NodePort
-  selector:
-    app: chatgpt-proxy
-  ports:
-    - protocol: TCP
-      port: 9515
-      targetPort: 9515
-```
 
 api-server
 
@@ -312,15 +233,10 @@ spec:
     spec:
       containers:
       - name: chatgpt-api
-        image: zhentianxiang/go-chatgpt-api:v0.3.14
+        image: linweiyuan/go-chatgpt-api:latest
         imagePullPolicy: IfNotPresent
         env:
-        - name: GIN_MODE
-          value: release
-        - name: CHATGPT_PROXY_SERVER
-        # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
-          value: "http://107.172.5.13:9515"
-        - name: all_proxy
+        - name: PROXY
           value: "socks5://10.0.16.9:7890"
         ports:
         - name: chatgpt-api
@@ -373,45 +289,7 @@ spec:
 web-share
 
 ```sh
-[root@VM-16-9-centos chatgpt-web-share]# cat chatgpt-web-share-cm.yaml 
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: chatgpt-web-share-config
-  namespace: chatgpt
-data:
-  config.yaml: |
-    print_sql: false
-    host: "127.0.0.1"
-    port: 8000
-    data_dir: /data # <------ v0.3.0 以上新增
-    database_url: "sqlite+aiosqlite:////data/database.db" # 特别注意：这里有四个斜杠，代表着文件位于 /data 目录，使用的是绝对路径
-    run_migration: false # 是否在启动时运行数据库迁移，目前没有必要启用
-    jwt_secret: "test" # 用于生成 jwt token，自行填写随机字符串
-    jwt_lifetime_seconds: 86400 # jwt token 过期时间
-    cookie_max_age: 86400 # cookie 过期时间
-    user_secret: "test" # 用于生成用户密码，自行填写随机字符串
-    sync_conversations_on_startup: true # 是否在启动时同步同步 ChatGPT 对话，建议启用。启用后，将会自动将 ChatGPT 中新增的对话同步到数据库中，并把已经不在 ChatGPT 中的对话标记为无效
-    create_initial_admin_user: true # 是否创建初始管理员用户
-    initial_admin_username: admin # 初始管理员用户名
-    initial_admin_password: password # 初始管理员密码
-    ask_timeout: 600    # 用于限制对话的最长时间
-    chatgpt_access_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJ6aGVubW91cmVuZXJAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItUDdZYUpBRVhxQm1oaThJdXRwbTM2S3JiIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMDQ5Njg3ODQ5ODYxMTI4MzUzOSIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkub3BlbmFpLmF1dGgwYXBwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2ODA5NTQ0OTAsImV4cCI6MTY4MjE2NDA5MCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.xLSeptVDPBMdC72T70PyrbxFS1-Bj9ZRm3OCaKwjyyyH3WU6zClw99E1bjNYTIenI9GMzjGZwFajj1BpAT61c18vmR5H7Idi3_IUJ3ZdrVipAhR5LQk1bZGVk2W34i4w-LzK4H3qN-5Eg0d8_EsJJzDea3yhNgs81bU-tplbBHM2JRCNe8cWjaltdMVJzSgTcxeWduBfoFclIK7RmCM-sHpAMy_JcmNKJafEycBqxJUp8rOjKUd3444Y8HBH7VETmZBEUIYkFoPS4onaT9Xkw-N5zUMlE5u2hxrRHfdAcZqQN2049DGUG3myk4k3_hxdnfNf42BWmjPjWcG0bT7eRQ" # 需要从 ChatGPT 获取，见后文
-    chatgpt_paid: false # 是否为 ChatGPT Plus 用户
-    # 注意：如果你希望使用公共代理，或使用整合的 go-proxy-api，请保持注释；如果需要自定义，注意最后一定要有一个斜杠
-    # 在实际请求时，chatgpt_base_url 优先级为：config 内定义 > 环境变量 > revChatGPT 内置的公共代理
-    # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
-    #chatgpt_base_url: http://10.0.16.9:32318/
-    log_dir: /app/logs # 日志存储位置，不要随意修改
-    console_log_level: DEBUG # 日志等级，设置为 DEBUG 能够获得更多信息
-    # 以下用于统计，如不清楚可保持默认
-    request_log_counter_time_window: 2592000 # 请求日志时间范围，默认为最近 30 天
-    request_log_counter_interval: 1800 # 请求日志统计粒度，默认为 30 分钟
-    ask_log_time_window: 2592000 # 对话日志时间范围，默认为最近 7 天
-    sync_conversations_regularly: yes # 是否定期（每隔12小时）从账号中同步一次对话
-```
-
-```sh
+[root@VM-16-9-centos chatgpt-web-share]# kubectl label nodes vm-16-9-centos chatgpt=yes
 [root@VM-16-9-centos chatgpt-web-share]# cat chatgpt-web-share-dp.yaml 
 apiVersion: apps/v1
 kind: Deployment
@@ -428,16 +306,12 @@ spec:
       labels:
         app: chatgpt-web-share
     spec:
+      nodeSelector:
+        chatgpt: yes
       containers:
       - name: chatgpt-web-share
-        image: zhentianxiang/chatgpt-web-share:v0.3.14
+        image: moeakwak/chatgpt-web-share:0.4.0-alpha4.4
         imagePullPolicy: IfNotPresent
-        env:
-        # 并且在k8s中不能使用service的DNS域名作为地址,只能用IP地址加端口方式
-        - name: CHATGPT_BASE_URL
-          value: "http://10.0.16.9:32318/"
-        - name: all_proxy
-          value: "socks5://10.0.16.9:7890"
         ports:
         - name: web
           protocol: TCP
@@ -469,45 +343,19 @@ spec:
           failureThreshold: 3  # 探测成功到失败的重试次数，3次失败后会将容器挂起，不提供访问流量
           timeoutSeconds: 10
         volumeMounts:
-          - name: chatgpt-web-share-config
-            mountPath: /app/backend/api/config/config.yaml
-          - name: chatgpt-web-share-data
-            mountPath: /data
+          - name: config
+            mountPath: /app/backend/data/
           - name: host-time
             mountPath: /etc/localtime
             readOnly: true              
       volumes:
-      - name: chatgpt-web-share-config
-        configMap:
-          name: chatgpt-web-share-config
-          items:
-            - key: 'config.yaml'
-              path: 'config.yaml'
-          defaultMode: 493
+      - name: config
+        hostPath:
+          path: /data/chatgpt-web/data
       - name: host-time
         hostPath:
           path: /etc/localtime
-      - name: chatgpt-web-share-data
-        persistentVolumeClaim:
-          claimName: chatgpt-web-share-data                           
       restartPolicy: Always
-```
-
-```sh
-[root@VM-16-9-centos chatgpt-web-share]# cat chatgpt-web-share-pvc.yaml 
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: chatgpt-web-share-data
-  namespace: chatgpt
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "nfs-provisioner-storage"
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
 ```
 
 ```sh
@@ -525,6 +373,56 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
+```
+
+```sh
+[root@VM-16-9-centos chatgpt-web-share]# mkdir /data/chatgpt-web/data/config -pv
+[root@VM-16-9-centos chatgpt-web-share]# vim /data/chatgpt-web/data/config/config.yaml
+openai_web:
+  is_plus_account: true
+  chatgpt_base_url: http://10.111.46.87:8080/chatgpt/backend-api/
+  common_timeout: 10
+  ask_timeout: 600
+openai_api:
+  openai_base_url: https://api.openai.com/v1/
+  proxy:
+  connect_timeout: 10
+  read_timeout: 20
+common:
+  print_sql: true
+  create_initial_admin_user: true
+  initial_admin_user_username: admin
+  initial_admin_user_password: password
+  sync_conversations_on_startup: true
+  sync_conversations_regularly: true
+http:
+  host: 127.0.0.1
+  port: 8000
+  cors_allow_origins:
+  - http://localhost
+  - http://127.0.0.1
+data:
+  data_dir: /data
+  database_url: sqlite+aiosqlite:///data/database.db
+  mongodb_url: mongodb://cws:password@chatgpt-mongodb:27017
+  run_migration: true
+auth:
+  jwt_secret: MODIFY_THIS_TO_RANDOM_SECRET
+  jwt_lifetime_seconds: 86400
+  cookie_max_age: 86400
+  cookie_name: user_auth
+  user_secret: MODIFY_THIS_TO_RANDOM_SECRET
+stats:
+  ask_stats_ttl: 7776000
+  request_stats_ttl: 2592000
+  request_stats_filter_keywords:
+  - /status
+log:
+  console_log_level: INFO
+[root@VM-16-9-centos chatgpt-web-share]# vim /data/chatgpt-web/data/config/credentials.yaml
+openai_web_access_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJ6aGVubW91cmVuZXJAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItUDdZYUpBRVhxQm1oaThJdXRwbTM2S3JiIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMDQ5Njg3ODQ5ODYxMTI4MzUzOSIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkub3BlbmFpLmF1dGgwYXBwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2OTAwMzExNTIsImV4cCI6MTY5MTI0MDc1MiwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvcmdhbml6YXRpb24ud3JpdGUgb2ZmbGluZV9hY2Nlc3MifQ.iVPCaEUsDyhilFjfcjVFjR3k1SdAX1Ah-dK4wQKEXQcuDEPmroKVdnVNjW3Qhs81Q4a6qLkx77fyH2JNwQXSYttsbFNYPmzLlUwvm4Jc2vwy6PLPMDY63HUFOqE9_iX0VjyuKuafwcZun_0O4OxcF9KwDiiKwo6mkPPWD5w7kJe43bdmYsCI8bSAMPmbAqCFxAd0p41Z4MA8e6ZI7a_ogdllkjxG_EXnTNP9fHuyGiaZV4FBVNZrWb6obW6VXO1x_ZiL4nNjM4O3AITOLM_yFHQ6Ze50XV1py-cOpoKRH1RYUG1cPATrhcD3Yy9tOZG_T4dD2UiblVuWenTcsO_hEg"
+openai_api_key: ""
+[root@VM-16-9-centos chatgpt-web-share]# kubectl apply -f .
 ```
 
 ## 四、Nginx 代理
