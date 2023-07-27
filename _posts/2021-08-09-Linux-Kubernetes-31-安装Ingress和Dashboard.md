@@ -715,6 +715,10 @@ kubectl top nodes
 
 $ wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.47.0/deploy/static/provider/baremetal/deploy.yaml
 
+# k8s 1.19 版本以上用这个
+
+$ wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.1/deploy/static/provider/cloud/deploy.yaml
+
 ```
 
 ```sh

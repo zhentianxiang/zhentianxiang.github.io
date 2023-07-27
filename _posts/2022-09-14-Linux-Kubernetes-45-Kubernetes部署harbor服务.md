@@ -649,3 +649,77 @@ PING k8s.harbor.com (192.168.20.120): 56 data bytes
 4 packets transmitted, 4 packets received, 0% packet loss
 round-trip min/avg/max/stddev = 0.052/0.103/0.166/0.049 ms
 ```
+
+## 三、更改域名信息和证书信息
+
+### 1. 更换访问域名
+
+```sh
+[root@kubesphere ~]# kubectl edit cm -n harbor harbor-core -o yaml
+# 修改
+  EXT_ENDPOINT: https://harbor.test.com
+[root@kubesphere ~]# kubectl rollout restart deployment -n harbor harbor-core
+```
+
+### 2. 更换证书
+
+```sh
+# 重新对域名或IP进行签证书，记得备份
+[root@kubesphere ~]# kubectl get secrets -n harbor harbor-nginx -o yaml > harbor-nginx-secret.yaml
+# 签证书
+[root@kubesphere ~]# vim script.sh
+#!/bin/bash
+openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ca.key -x509 -days 3650 -out ca.crt -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.test.com"
+openssl req -newkey rsa:4096 -nodes -sha256 -keyout tls.key -out tls.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.test.com"
+# IP地址可以多预留一些，主要是域名能解析到的地址，其他的地址写进去也没用
+echo subjectAltName = IP:192.168.1.20, IP:192.168.1.21, IP:192.168.1.110, IP:127.0.0.1, DNS:example.com, DNS:harbor.test.com > extfile.cnf
+openssl x509 -req -days 3650 -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile extfile.cnf -out tls.crt
+[root@kubesphere ~]# bash script.sh
+[root@kubesphere ~]# kubectl delete secrets -n harbor harbor-nginx
+[root@kubesphere ~]# kubectl create secret generic harbor-nginx -n harbor \
+--from-file=tls.crt \
+--from-file=tls.key \
+--from-file=ca.crt
+[root@kubesphere ~]# kubectl rollout restart deployment -n harbor harbor-nginx
+[root@kubesphere ~]# cp ca.crt /etc/docker/certs.d/harbor.test.com/
+# 或者
+[root@kubesphere ~]# kubectl get secrets  -n harbor harbor-nginx -o jsonpath="{.data.ca\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.test.com/ca.crt
+```
+
+### 3. 后期使用 ingress
+
+```sh
+[root@kubesphere ~]# vim harbor-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: harbor-ingress
+  namespace: harbor
+  annotations:
+    #kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    ingress.kubernetes.io/ssl-redirect: "true"
+    ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - harbor.test.com
+    secretName: harbor-nginx
+  rules:
+  - host: harbor.test.com
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: harbor
+            port:
+              number: 443
+```
+
