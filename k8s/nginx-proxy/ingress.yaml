@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-jekyll
+  namespace: jekyll
+  annotations:
+    # Ingress Controller类别
+    kubernetes.io/ingress.class: "nginx"
+    # 正则表达式来匹配路径
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # 将HTTP请求重定向到HTTPS协议
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 指定为"HTTPS"表示后端服务使用HTTPS协议通信
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # 设置为"0"表示没有限制请求体的大小
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  tls:
+  - hosts:
+    - blog.linuxtian.top
+    secretName: nginx-tls
+  rules:
+  - host: blog.linuxtian.top
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: nginx-jekyll
+            port:
+              number: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-beian
+  namespace: jekyll
+  annotations:
+    # Ingress Controller类别
+    kubernetes.io/ingress.class: "nginx"
+    # 正则表达式来匹配路径
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - host: www.linuxtian.top
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: nginx-jekyll
+            port:
+              number: 80

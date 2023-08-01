@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beian-conf
+  namespace: jekyll
+data:
+  beian.conf: |
+    server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name www.linuxtian.top;
+        
+        #return 200 "This is the default website.";
+    
+        location / {
+          root /etc/nginx;
+          index beian.html;
+        }
+    }

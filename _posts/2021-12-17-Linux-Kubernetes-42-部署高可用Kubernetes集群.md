@@ -691,7 +691,7 @@ kubeadm 安装的集群，etcdctl命令如下
       "https://docker.mirrors.ustc.edu.cn"
     ],
     "insecure-registries": [
-        "harbor.hyper.com"
+        "harbor.demo.com"
     ],
     "live-restore": true,
     "exec-opts": ["native.cgroupdriver=systemd"],

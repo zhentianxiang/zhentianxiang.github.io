@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beian-html
+  namespace: jekyll
+data:
+  beian.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>云原生技术圈</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
+            }
+    
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background-color: #f2f2f2;
+            }
+    
+            h1 {
+                font-size: 36px;
+                margin-bottom: 20px;
+            }
+    
+            ul {
+                list-style-type: none;
+                padding: 0;
+            }
+    
+            li {
+                margin-bottom: 10px;
+                font-size: 18px;
+            }
+    
+            p {
+                margin-bottom: 20px;
+                text-align: justify;
+            }
+    
+            #footer {
+                text-align: center;
+                margin-top: 50px;
+                font-size: 14px;
+                color: #666;
+            }
+        </style>
+        <script>
+            window.onload = function() {
+                var currentYear = new Date().getFullYear();
+                var footerText = '冀ICP备<a href="https://beian.miit.gov.cn">20002392号-2</a> | 版权所有 &copy; ' + currentYear + ' <a href="https://blog.linuxtian.top">blog.linuxtian.top</a>';
+                document.getElementById('footer').innerHTML = footerText;
+            };
+        </script>
+    </head>
+    
+    <body>
+        <div class="container">
+            <h1>云原生技术圈</h1>
+            <ul>
+                <li>
+                    <h2>Kubernetes</h2>
+                    <p>
+                        Kubernetes 是一个开源的容器编排和管理平台，用于自动化部署、扩展和操作容器化应用程序。它提供了强大的容器编排功能，可以帮助开发人员和运维团队简化应用程序的部署和管理。Kubernetes 具有高可用性、可扩展性和灵活性的特点，已成为云原生应用开发和部署的事实标准。详细介绍可以参考官方文档：<a href="https://kubernetes.io/zh/docs/concepts/overview/what-is-kubernetes/" target="_blank">https://kubernetes.io/zh/docs/concepts/overview/what-is-kubernetes/</a>
+                    </p>
+                </li>
+                <li>
+                    <h2>Docker</h2>
+                    <p>
+                        Docker 是一种轻量级的容器化技术，可以将应用程序及其依赖项打包到一个可移植的容器中，然后在任何环境中运行。Docker 提供了快速、可靠和一致的应用程序交付和部署方式，使开发人员能够更高效地构建、测试和部署应用程序。通过 Docker，可以实现应用程序的隔离性和可移植性，简化了开发和运维过程。详细介绍可以参考官方文档：<a href="https://www.docker.com/what-docker" target="_blank">https://www.docker.com/what-docker</a>
+                    </p>
+                </li>
+                <li>
+                    <h2>Istio</h2>
+                    <p>
+                        Istio 是一个开源的服务网格平台，用于连接、保护、控制和观察微服务间的通信。它提供了流量管理、安全性、可观察性和策略执行等功能，可以帮助开发人员和运维团队更好地管理和监控复杂的微服务架构。Istio 通过注入 Sidecar 代理到每个服务实例中，实现了对服务间通信的全面控制和可视化。详细介绍可以参考官方文档：<a href="https://istio.io/latest/docs/concepts/what-is-istio/" target="_blank">https://istio.io/latest/docs/concepts/what-is-istio/</a>
+                    </p>
+                </li>
+                <li>
+                    <h2>SkyWalking</h2>
+                    <p>
+                        Apache SkyWalking 是一个开源的应用性能监控系统，用于收集、分析和可视化分布式系统的性能数据。它支持多种语言和框架，能够实时追踪和诊断复杂的分布式应用程序，帮助开发人员快速定位和解决性能问题。SkyWalking 提供了可视化的监控仪表板和强大的分析功能，使运维团队能够深入了解应用程序的性能和行为。详细介绍可以参考官方文档：<a href="https://skywalking.apache.org/zh/docs/" target="_blank">https://skywalking.apache.org/zh/docs/</a>
+                    </p>
+                </li>
+                <li>
+                    <h2>Terraform</h2>
+                    <p>
+                        Terraform 是一个开源的基础设施即代码工具，用于自动化管理和部署基础设施资源。它支持多种云平台和基础设施提供商，并提供了声明式语言来描述基础设施的状态和配置。使用 Terraform，你可以以可重复和可维护的方式定义和部署云资源，实现基础设施的自动化管理。详细介绍可以参考官方文档：<a href="https://www.terraform.io/intro/index.html" target="_blank">https://www.terraform.io/intro/index.html</a>
+                    </p>
+                </li>
+                <li>
+                    <h2>Jenkins</h2>
+                    <p>
+                        Jenkins 是一个开源的持续集成和持续交付工具，用于自动化构建、测试和部署软件。它提供了丰富的插件生态系统，支持多种编程语言和工具，并提供了易于使用的界面来配置和管理软件交付流程。通过 Jenkins，你可以实现自动化构建、测试和部署的流程，加快软件开发和交付的速度。详细介绍可以参考官方文档：<a href="https://www.jenkins.io/doc/" target="_blank">https://www.jenkins.io/doc/</a>
+                    </p>
+                </li>
+                <li>
+                    <h2>Prometheus</h2>
+                    <p>
+                        Ansible 是一个开源的自动化工具，用于配置管理、应用程序部署和编排。它采用基于 YAML 的描述语言，简化了基础设施和应用程序的配置和部署过程。Ansible 可以与多种云平台和基础设施提供商集成，并提供了强大的编排能力，帮助开发人员和运维团队实现自动化的配置管理和部署。详细介绍可以参考官方文档：<a href="https://docs.ansible.com/ansible/latest/index.html" target="_blank">https://docs.ansible.com/ansible/latest/index.html</a>
+                    </p>
+                </li>
+            </ul>
+        </div>
+        <div id="footer"></div>
+    </body>
+    
+    </html>

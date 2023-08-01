@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-jekyll
+  namespace: jekyll
+  labels:
+    app: nginx-jekyll
+spec:
+  selector:
+    app: nginx-jekyll
+  ports:
+  - name: http-jekyll
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 443
+    
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-jekyll
+  namespace: jekyll
+  labels:
+    app: nginx-jekyll
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-jekyll
+  template:
+    metadata:
+      labels:
+        app: nginx-jekyll
+    spec:
+      containers:
+      - name: nginx-jekyll
+        image: zhentianxiang/nginx-plugin:1.20.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          protocol: TCP
+          containerPort: 80
+        - name: https
+          protocol: TCP
+          containerPort: 443
+        volumeMounts:
+          - name: jekyll-conf
+            mountPath: /etc/nginx/conf.d/jekyll.conf
+            subPath: jekyll.conf
+          - name: beian-conf
+            mountPath: /etc/nginx/conf.d/beian.conf
+            subPath: beian.conf
+          - name: beian-html
+            mountPath: /opt/beian.html
+            subPath: beian.html
+          - name: certificate
+            mountPath: /etc/nginx/cert
+          - name: file-data
+            mountPath: /data
+          - name: host-time
+            mountPath: /etc/localtime
+            readOnly: true 
+      volumes:
+      - name: jekyll-conf
+        configMap:
+          name: jekyll-conf
+      - name: beian-conf
+        configMap:
+          name: beian-conf
+      - name: beian-html
+        configMap:
+          name: beian-html
+      - name: certificate
+        secret:
+          secretName: nginx-tls
+      - name: file-data
+        hostPath:
+          path: /etc/nginx/data
+      - name: host-time
+        hostPath:
+          path: /etc/localtime
+      restartPolicy: Always

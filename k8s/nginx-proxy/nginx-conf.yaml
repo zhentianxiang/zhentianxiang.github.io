@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf
+  namespace: jekyll
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log;
+    pid /run/nginx.pid;
+    
+    # Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
+    #include /usr/share/nginx/modules/*.conf;
+    
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        log_format  main  '[$time_local] - [$remote_addr] - [$geoip2_country_code $geoip2_data_city_name] - "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"'
+                          '"$upstream_cache_status"';
+    
+        access_log  /var/log/nginx/access.log  main;
+    
+        sendfile            on;
+        tcp_nopush          on;
+        # 不要缓存数据，而是一段一段的发送——当需要及时发送数据时，就应该设置这个属性， 这样发送一小块数据信息时就不能>立即得到返回值
+        tcp_nodelay         on;
+        types_hash_max_size 4096;
+        #  隐藏版本号
+        server_tokens off;
+        # 开启gzip
+        gzip on;
+        # 启用gzip压缩的最小文件，小于设置值的文件将不会压缩
+        gzip_min_length 1k;
+        # gzip 压缩级别，1-9，数字越大压缩的越好，也越占用CPU时间，后面会有详细说明
+        gzip_comp_level 9;
+        # 进行压缩的文件类型。javascript有多种形式。其中的值可以在 mime.types 文件中找到
+        gzip_types text/plain application/JavaScript application/x-javascript text/css application/xml text/javascript application/x-httpd-php image/jpeg image/gif image/png application/vnd.ms-fontobject font/ttf font/opentype font/x-woff image/svg+xml;
+        # 是否在http header中添加Vary: Accept-Encoding，建议开启
+        gzip_vary on;
+        # 禁用IE 6 gzip
+        gzip_disable "MSIE [1-6]\.";
+        # 设置压缩所需要的缓冲区大小
+        gzip_buffers 32 4k;
+        # 设置gzip压缩针对的HTTP协议版本
+        gzip_http_version 1.1;
+       # 语言
+        charset utf-8;
+       # 会话保持时间，设置的低一些可以让 nginx 持续工作的时间更长
+        keepalive_timeout 60;
+       # 指定连接请求实体的缓存大小
+        client_body_buffer_size 0M;
+       # 代理连接超时时间，单位秒
+        proxy_connect_timeout 5;
+       # 代理接收超时
+        proxy_read_timeout 60;
+       # 代理发送超时
+        proxy_send_timeout 5;
+       # 代理缓存文件大小
+        proxy_buffer_size 128k;
+       # 代理缓存区的数量及大小，默认一个缓冲区大小与页面大小相等
+        proxy_buffers 4 64k;
+       # 高负荷下缓存区大小
+        proxy_busy_buffers_size 128k;
+       # 代理临时文件大小
+        proxy_temp_file_write_size 128k;
+        #代理时，开启缓冲后端服务器的响应
+        proxy_buffering on;
+        # 代理缓存存放路径，第一层目录只有一个字符，是由 levels=1:2 设置，总共二层目录，子 目录名字由二个字符组成，键>值名称为 cache_one(名字随意)，在内存中缓存的空间大小 为 200MB，1 天内没有被访问的缓存将自动清除，硬盘缓存空间>为 3GB
+        # 定义缓存临时目录
+        proxy_temp_path /var/cache/nginx/proxy_temp;
+        proxy_cache_path /var/cache/nginx/proxy_cache levels=1:2 keys_zone=cache_one:200m inactive=1d max_size=3g;
+        include             /etc/nginx/mime.types;
+        default_type        application/octet-stream;
+        #default_type        text/html;
+    
+        # Load modular configuration files from the /etc/nginx/conf.d directory.
+        # See http://nginx.org/en/docs/ngx_core_module.html#include
+        # for more information.
+        include /etc/nginx/conf.d/*.conf;
+    
+        # 访问限流
+        # 限制用户连接数来预防DOS攻击
+        limit_conn_zone $binary_remote_addr zone=perip:10m;
+        limit_conn_zone $server_name zone=perserver:10m;
+        # 限制同一客户端ip最大并发连接数
+        limit_conn perip 20;
+        # 限制同一server最大并发连接数
+        limit_conn perserver 20;
+        # 限制下载速度，根据自身服务器带宽配置
+        #limit_rate 300k;
+        # 设置为 on 时，表示 Nginx 将尽可能发送所有可用的数据给客户端，以填充 TCP 数据包，并尽量减少发送短数据包的次数
+        #tcp_nopush on;
+        # 这样做可以减少延迟，但可能导致更多的网络传输次数，特别是在处理较大的响应数据时
+        #tcp_nodelay on;
+        # 配置错误页返回
+        proxy_intercept_errors on;
+        fastcgi_intercept_errors on;
+    
+        map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+        }
+    
+        # 国外IP数据库清单
+        geoip2 /usr/share/GeoIP/GeoLite2-Country.mmdb {
+        auto_reload 5m;
+        $geoip2_country_code country names en;
+        $geoip2_data_country_code country iso_code;
+        }
+    
+        geoip2 /usr/share/GeoIP/GeoLite2-City.mmdb {
+        $geoip2_data_country_name country names en;
+        $geoip2_data_country_code default=China source=$remote_addr country iso_code;
+        $geoip2_data_city_name city names en;
+        $geoip2_data_province_name subdivisions 0 names en;
+        $geoip2_data_province_isocode subdivisions 0 iso_code;
+        $geoip2_continent_code continent code;
+        }
+    
+          map $geoip2_data_country_code $allowed_country {
+    
+          # 允许 中国,台湾,香港地区访问,其他地区一律不允许访问
+            CN yes;
+            TW yes;
+            HK yes;
+            US yes;
+            default no;
+        }
+    
+      map $http_x_forwarded_proto $x_forwarded_proto {
+        default $http_x_forwarded_proto;
+        ""      $scheme;
+      }
+    
+    }
