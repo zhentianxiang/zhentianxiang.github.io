@@ -57,9 +57,9 @@ data:
                    proxy_next_upstream http_502 http_504 error timeout invalid_header;
     
                    # 禁止国外IP访问，返回报错404,使用ingress代理时不能这么写,因为源IP是内网IP,GeoIP查不出来是哪个地区的
-                   #if ($allowed_country = no) {
-                   #return 403;
-                   #      }
+                   if ($allowed_country = no) {
+                   return 403;
+                         }
     
                   # 防止爬虫抓取
                   if ($http_user_agent ~* "360Spider|JikeSpider|Spider|spider|bot|Bot|2345Explorer|curl|wget|webZIP|qihoobot|Baiduspider|Googlebot|Googlebot-Mobile|Googlebot-Image|Mediapartners-Google|Adsbot-Google|Feedfetcher-Google|Yahoo! Slurp|Yahoo! Slurp China|YoudaoBot|Sosospider|Sogou spider|Sogou web spider|MSNBot|ia_archiver|Tomato Bot|NSPlayer|bingbot"){
@@ -74,6 +74,9 @@ data:
                     autoindex_exact_size off; # 显示文件大小
                     autoindex_localtime on; # 显示文件时间
                     root /; # 存放文件的目录
+                    # 登录认证配置
+                    auth_basic "secret";
+                    auth_basic_user_file /data/1-jekyll博客相关/passwd.db;
                   }
     
                   # 解决 gitalkError: Network Error
