@@ -38,8 +38,12 @@ spec:
     spec:
       containers:
       - name: nginx-jekyll
-        image: zhentianxiang/nginx-plugin:1.20.1
+        image: zhentianxiang/nginx-plugin:1.20.1-alpha1
         imagePullPolicy: IfNotPresent
+        env:
+        # 允许以下国家IP访问
+        - name: ALLOWED_COUNTRIES
+          value: 'CN yes;,TW yes;,HK yes;,US yes;'
         ports:
         - name: http
           protocol: TCP

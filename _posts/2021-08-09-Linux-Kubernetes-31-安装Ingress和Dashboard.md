@@ -711,13 +711,9 @@ kubectl top nodes
 ### 2. ingress-nginx的安装
 
 ```sh
-# 下载yaml资源，如果官方的不能下载，可以使用这个 https://blog.linuxtian.top/data/nginx-ingress/k8s-v1.20.1/deploy.yaml
+# ingress-nginx: https://github.com/kubernetes/ingress-nginx
 
-$ wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.47.0/deploy/static/provider/baremetal/deploy.yaml
-
-# k8s 1.19 版本以上用这个
-
-$ wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.1/deploy/static/provider/cloud/deploy.yaml
+$ wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.0/deploy/static/provider/cloud/deploy.yaml
 
 ```
 
@@ -726,10 +722,7 @@ $ wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.
 # 修改以及添加一些配置
 
 $ vim deploy.yaml
-
-# Source: ingress-nginx/templates/controller-deployment.yaml
-apiVersion: apps/v1
-kind: DaemonSet      # 修改为 DaemonSet
+kind: Deployment
 ...............
     spec:
       hostNetwork: true   # 添加
@@ -738,9 +731,11 @@ kind: DaemonSet      # 修改为 DaemonSet
       dnsPolicy: ClusterFirst
       containers:
         - name: controller
-          image: registry.cn-hangzhou.aliyuncs.com/lfy_k8s_images/ingress-nginx-controller:v0.46.0  # 修改为此镜像
+          image: zhentianxiang/ingress-nginx-controller:v1.3.0 # 修改为此镜像
           imagePullPolicy: IfNotPresent
 ..............
+          image: zhentianxiang/kube-webhook-certgen:v1.1.1 # 其余两个容器镜像
+          image: zhentianxiang/kube-webhook-certgen:v1.1.1 # 其余两个容器镜像
 ```
 
 ```sh
@@ -752,8 +747,32 @@ $ kubectl apply -f deploy.yaml
 ```
 
 ```sh
-# 检查安装的结果
+# 添加自定义 header 信息
+$ cat > custom-headers.yaml <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-headers
+  namespace: ingress-nginx
+data:
+  X-Different-Name: "true"
+  X-Using-Nginx-Controller: "true"
+  X-Request-Start: t=${msec}
+  http_x_forwarded_for: $http_x_forwarded_for
+  client-ip: $remote_addr
+  remote_addr: $remote_addr
+EOF
 
+$ kubectl edit cm -n ingress-nginx ingress-nginx-controller
+apiVersion: v1
+data:
+  add-headers: ingress-nginx/custom-headers # 添加这个
+
+$ kubectl rollout restart deployment -n ingress-nginx ingress-nginx-controller 
+```
+
+```sh
+# 检查安装的结果
 $ kubectl get pod,svc -n ingress-nginx
 ```
 

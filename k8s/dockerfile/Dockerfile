@@ -29,4 +29,8 @@ RUN cd /usr/share/nginx/nginx-1.20.1 && \
 
 COPY nginx.conf /etc/nginx/
 COPY stylepage /etc/nginx/stylepage
-CMD ["nginx", "-g", "daemon off;"]
+COPY start.sh /start.sh
+
+ENV ALLOWED_COUNTRIES ""
+
+CMD ["/bin/bash", "-c", "/start.sh"]
