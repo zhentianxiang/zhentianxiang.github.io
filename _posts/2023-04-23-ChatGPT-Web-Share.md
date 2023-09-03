@@ -173,38 +173,38 @@ version: "3"
 
 services:
   chatgpt-web-share:
-    image: moeakwak/chatgpt-web-share:0.4.0-alpha4.4
-    restart: always
+    container_name: web-share
+    image: zhentianxiang/chatgpt-web-share:0.4.0-alpha4.4
     ports:
-      - 80:80 # web 端口号
+      - 8080:80
     volumes:
       - ./data:/app/backend/data/
-    environment::
+    environment:
       - TZ=Asia/Shanghai
       - CWS_CONFIG_DIR=/app/backend/data/config
-      - CHATGPT_BASE_URL=http://10.0.16.9:8081/chatgpt/backend-api
-    restart: unless-stopped
+    depends_on:
+      - chatgpt-api-server
+    restart: always
 
   chatgpt-api-server:
-    image: linweiyuan/go-chatgpt-api:latest
+    container_name: api-server
+    image: zhentianxiang/go-chatgpt-api:0.4.0-alpha4.4
     ports:
-      - 8081:8080 # 如果你需要暴露端口如一带多，可以取消注释
-    environment:
-      - PROXY="socks5://10.0.16.9:7890"
-    depends_on:
-      - chatgpt-proxy-server
-    restart: unless-stopped
-
-  chatgpt-mongo:
-    image: mongo:6.0
+      - 8081:8080
     restart: always
+
+  chatgpt-mongodb:
+    container_name: mongodb
+    image: mongo:6.0
+    ports:
+      - 27017:27017
     volumes:
       - ./mongo_data:/data/db
     environment:
       MONGO_INITDB_DATABASE: cws
       MONGO_INITDB_ROOT_USERNAME: cws
       MONGO_INITDB_ROOT_PASSWORD: password
-    restart: unless-stopped
+    restart: always
 ```
 
 ```sh

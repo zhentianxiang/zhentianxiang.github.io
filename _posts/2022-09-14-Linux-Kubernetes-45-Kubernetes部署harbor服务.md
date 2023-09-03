@@ -203,465 +203,915 @@ EOF
 
 ## 二、准备部署 harbor
 
-### 1. 部署 pgo 服务
+### 1. 原生态部署 harbor
 
-[helm-harbor.tar.gz](https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/helm-harbor.tar.gz)
-
-[helm-v3.9.3-linux-amd64.tar.gz](https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/helm-v3.9.3-linux-amd64.tar.gz)
-
-导入镜像
+#### 1.1 安装 helm
 
 ```sh
-[root@kubesphere app]# mkdir helm-harbor
-[root@kubesphere app]# tar xvf helm-harbor.tar.gz
-[root@kubesphere app]# cd helm-harbor/images/harbor/
-[root@kubesphere harbor]# ./import.sh docker
-[root@kubesphere harbor]# cd ../pgo/
-[root@kubesphere pgo]# ./import.sh docker
-[root@kubesphere pgo]# cd ../redis/
-[root@kubesphere redis]# ./import.sh docker
+# 在线安装
+$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+Downloading https://get.helm.sh/helm-v3.2.4-linux-amd64.tar.gz
+Preparing to install helm into /usr/local/bin
+helm installed into /usr/local/bin/helm
+
+# 下载安装
+# 下载Helm客户端
+$ wget https://get.helm.sh/helm-v3.2.4-linux-amd64.tar.gz
+
+# 接下来解压下载的包，然后将客户端放置到 /usr/local/bin/ 目录下：
+# 解压 Helm
+$ tar -zxvf helm-v3.2.4-linux-amd64.tar.gz
+
+# 复制客户端执行文件到 bin 目录下，方便在系统下能执行 helm 命令
+$ cp linux-amd64/helm /usr/local/bin/
 ```
 
-修改镜像 tag，将镜像推送到事先准备好的 registry 仓库中
+#### 1.2 创建 namespace
 
 ```sh
-[root@kubesphere app]# docker run -d -p 5000:5000  \
---name registry --restart=always \
--v /data/registry:/var/lib/registry \
-registry:2
-Unable to find image 'registry:2' locally
-2: Pulling from library/registry
-79e9f2f55bf5: Pull complete
-0d96da54f60b: Pull complete
-5b27040df4a2: Pull complete
-e2ead8259a04: Pull complete
-3790aef225b9: Pull complete
-Digest: sha256:169211e20e2f2d5d115674681eb79d21a217b296b43374b8e39f97fcf866b375
-Status: Downloaded newer image for registry:2
-fd654277e40a237a2487a20de7c9e6ea11aa0f71b3484625928c1c84c70d29b7
-[root@VM-16-9-centos harbor]# vim /etc/docker/daemon.json
-{
-    "insecure-registries": ["10.0.16.9:5000"]
-}
-[root@VM-16-9-centos harbor]# systemctl restart docker
-
-# harbor
-[root@VM-16-9-centos harbor]# docker images|grep goharbor|grep v2.4.3 |sed 's/goharbor/10.0.16.9\:5000\/goharbor/g'|awk '{print "docker tag" " " $3 " " $1":"$2}' |bash
-[root@VM-16-9-centos harbor]# docker images |grep "10.0.16.9:5000/goharbor"
-10.0.16.9:5000/goharbor/harbor-portal                                         v2.4.3.1            3067c5ee87da        2 days ago          151MB
-10.0.16.9:5000/goharbor/nginx-photon                                          v2.4.3.1            545404fd1696        2 days ago          142MB
-10.0.16.9:5000/goharbor/chartmuseum-photon                                    v2.4.3              f39a9694988d        5 months ago        172MB
-10.0.16.9:5000/goharbor/trivy-adapter-photon                                  v2.4.3              a406a715461c        5 months ago        251MB
-10.0.16.9:5000/goharbor/notary-server-photon                                  v2.4.3              da89404c7cf9        5 months ago        109MB
-10.0.16.9:5000/goharbor/notary-signer-photon                                  v2.4.3              38468ac13836        5 months ago        107MB
-10.0.16.9:5000/goharbor/harbor-registryctl                                    v2.4.3              61243a84642b        5 months ago        135MB
-10.0.16.9:5000/goharbor/registry-photon                                       v2.4.3              9855479dd6fa        5 months ago        77.9MB
-10.0.16.9:5000/goharbor/harbor-jobservice                                     v2.4.3              7fea87c4b884        5 months ago        219MB
-10.0.16.9:5000/goharbor/harbor-core                                           v2.4.3              d864774a3b8f        5 months ago        197MB
-10.0.16.9:5000/goharbor/harbor-db                                             v2.4.3              7693d44a2ad6        5 months ago        225MB
-[root@VM-16-9-centos harbor]# docker images |grep "10.0.16.9:5000/goharbor"|awk '{print "docker push "$1":"$2}' |bash
-The push refers to repository [10.0.16.9:5000/goharbor/harbor-portal]
-c705b35852ec: Pushed
-9f9c1e7ff5fd: Pushed
-7b72d5d921cb: Pushed
-aa3739f310f5: Pushed
-6906edffc609: Pushed
-f88642d922a1: Pushed
-2842e5d66803: Pushed
-b5ebffba54d3: Pushed
-v2.4.3.1: digest: sha256:8c57bdd6b1d8485871494ffcfbfc21819ff0ab65fed214d8d64f870882f8c4f8 size: 1989
-
-# pgo
-[root@VM-16-9-centos pgo]# docker images |grep -E "crunchy-pgbouncer|postgres-operator|postgres-operator-upgrade|crunchy-pgbackrest|crunchy-postgres"|sed 's/registry.developers.crunchydata.com/10.0.16.9\:5000/g'|awk '{print "docker tag" " " $3 " " $1":"$2}' |bash
-[root@VM-16-9-centos pgo]# docker images |grep 10.0.16.9:5000/crunchydata
-10.0.16.9:5000/crunchydata/crunchy-pgbackrest                                 ubi8-2.38-2         29751805a893        5 months ago        664MB
-10.0.16.9:5000/crunchydata/crunchy-postgres                                   ubi8-14.4-0         926adcbc25fb        5 months ago        887MB
-10.0.16.9:5000/crunchydata/crunchy-pgbouncer                                  ubi8-1.16-4         9984c2e658a7        5 months ago        578MB
-10.0.16.9:5000/crunchydata/postgres-operator                                  ubi8-5.1.2-0        14c26248d0bb        5 months ago        144MB
-10.0.16.9:5000/crunchydata/postgres-operator-upgrade                          ubi8-5.1.2-0        01b0a71ea829        5 months ago        136MB
-[root@VM-16-9-centos pgo]#  docker images |grep 10.0.16.9:5000/crunchydata |awk '{print "docker push "$1":"$2}' |bash
-The push refers to repository [10.0.16.9:5000/crunchydata/crunchy-pgbackrest]
-f1dd0c604f88: Pushed
-7887c6d54161: Pushed
-4f358a3ede87: Pushed
-
-# redis
-[root@VM-16-9-centos redis]# docker tag redis:6.2.5-alpine 10.0.16.9:5000/redis:6.2.5-alpine
-[root@VM-16-9-centos redis]# docker push 10.0.16.9:5000/redis:6.2.5-alpine
-The push refers to repository [10.0.16.9:5000/redis]
-70dec5d92878: Pushed
-e9176f2edf81: Pushed
-87792b9ad065: Pushed
-346615b02a36: Pushed
-512970cfaf24: Pushed
-e2eb06d8af82: Pushed
-6.2.5-alpine: digest: sha256:649d5317016d601ac7d6a7b7ef56b6d96196fb7df433d10143189084d52ee6f7 size: 1571
+$ kubectl create namespace harbor
 ```
 
-替换原配置文件中的镜像地址为10.0.16.9:5000
+#### 1.3 创建 TLS 证书
 
 ```sh
-# harbor
-[root@VM-16-9-centos harbor-1.8.3]# sed -i 's/goharbor/10.0.16.9\:5000\/goharbor/g' values.yaml
-[root@VM-16-9-centos harbor-1.8.3]# cat values.yaml |grep repository:|sed 's/ //g'
-repository:10.0.16.9:5000/goharbor/nginx-photon
-repository:10.0.16.9:5000/goharbor/harbor-portal
-repository:10.0.16.9:5000/goharbor/harbor-core
-repository:10.0.16.9:5000/goharbor/harbor-jobservice
-repository:10.0.16.9:5000/goharbor/registry-photon
-repository:10.0.16.9:5000/goharbor/harbor-registryctl
-repository:10.0.16.9:5000/goharbor/chartmuseum-photon
-repository:10.0.16.9:5000/goharbor/trivy-adapter-photon
-repository:10.0.16.9:5000/goharbor/notary-server-photon
-repository:10.0.16.9:5000/goharbor/notary-signer-photon
-repository:10.0.16.9:5000/goharbor/harbor-db
-repository:10.0.16.9:5000/goharbor/redis-photon
-repository:10.0.16.9:5000/goharbor/harbor-exporter
+$ mkdir harbor-tls && cd harbor-tls
+$ vim script.sh
+#!/bin/bash
+openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ca.key -x509 -days 3650 -out ca.crt -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.demo.com"
+openssl req -newkey rsa:4096 -nodes -sha256 -keyout tls.key -out tls.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.demo.com"
+# IP地址可以多预留一些，主要是域名能解析到的地址，其他的地址写进去也没用
+echo subjectAltName = IP:192.168.1.20, IP:192.168.1.21, IP:192.168.1.110, IP:127.0.0.1, DNS:example.com, DNS:harbor.demo.com > extfile.cnf
+openssl x509 -req -days 3650 -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile extfile.cnf -out tls.crt
 
-# pgo
-[root@VM-16-9-centos pgo_install]# sed -i 's/registry.developers.crunchydata.com/10.0.16.9:5000/g' values.yaml
-[root@VM-16-9-centos pgo_install]# cat values.yaml |grep image: |sed 's/ //g'
-image:10.0.16.9:5000/crunchydata/crunchy-postgres:ubi8-14.4-0
-image:10.0.16.9:5000/crunchydata/crunchy-postgres-gis:ubi8-14.4-3.1-0
-image:10.0.16.9:5000/crunchydata/crunchy-postgres-gis:ubi8-14.4-3.2-0
-image:10.0.16.9:5000/crunchydata/crunchy-postgres:ubi8-13.7-1
-image:10.0.16.9:5000/crunchydata/crunchy-postgres-gis:ubi8-13.7-3.0-1
-image:10.0.16.9:5000/crunchydata/crunchy-postgres-gis:ubi8-13.7-3.1-1
-image:10.0.16.9:5000/crunchydata/crunchy-pgadmin4:ubi8-4.30-2
-image:10.0.16.9:5000/crunchydata/crunchy-pgbackrest:ubi8-2.38-2
-image:10.0.16.9:5000/crunchydata/crunchy-pgbouncer:ubi8-1.16-4
-image:10.0.16.9:5000/crunchydata/crunchy-postgres-exporter:ubi8-5.1.2-0
-image:10.0.16.9:5000/crunchydata/crunchy-upgrade:ubi8-5.1.2-0
-[root@VM-16-9-centos postgres_cluster]# sed -i 's/registry.developers.crunchydata.com/10.0.16.9:5000/g' ha-postgres.yaml
-[root@VM-16-9-centos postgres_cluster]# cat ha-postgres.yaml |grep image: |sed 's/ //g'
-image:10.0.16.9:5000/crunchydata/crunchy-postgres:ubi8-14.4-0
-image:10.0.16.9:5000/crunchydata/crunchy-pgbackrest:ubi8-2.38-2
-image:10.0.16.9:5000/crunchydata/crunchy-pgbouncer:ubi8-1.16-4
+$ bash script.sh
 
-# redis
-[root@VM-16-9-centos redis-ha]# sed -i 's/repository\: redis/repository\: 10.0.16.9\:5000\/redis/g' values.yaml
-[root@VM-16-9-centos redis-ha]# cat values.yaml|grep "repository: 10.0.16.9"|sed 's/ //g'
-repository:10.0.16.9:5000/redis
+$ kubectl create secret tls harbor-tls -n harbor  --cert=tls.crt --key=tls.key
 ```
 
-安装 helm 工具
-
 ```sh
-[root@kubesphere redis]# cd /app/harbor-helm
-[root@kubesphere harbor-helm]# tar zxvf helm-v3.9.3-linux-amd64.tar.gz
-[root@kubesphere harbor-helm]# cp linux-amd64/helm /usr/bin/helm
+$ mkdir harbor-notary && cd harbor-notary
+
+$ vim script.sh
+#!/bin/bash
+openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ca.key -x509 -days 3650 -out ca.crt -subj "/C=CN/L=Beijing/O=lisea/CN=harbor-notary.demo.com"
+openssl req -newkey rsa:4096 -nodes -sha256 -keyout tls.key -out tls.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor-notary.demo.com"
+# IP地址可以多预留一些，主要是域名能解析到的地址，其他的地址写进去也没用
+echo subjectAltName = IP:192.168.1.20, IP:192.168.1.21, IP:192.168.1.110, IP:127.0.0.1, DNS:example.com, DNS:harbor-notary.demo.com > extfile.cnf
+openssl x509 -req -days 3650 -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile extfile.cnf -out tls.crt
+
+$ bash script.sh
+
+$ kubectl create secret tls harbor-notary -n harbor  --cert=tls.crt --key=tls.key
 ```
 
-安装 postgres
+#### 1.4 准备 harbor chart 文件
 
-检查事项：
-
-1. 检查默认存储名与实际k8s是否相符，默认nfs-sc，不填写使用默认的sc
-
-2. 检查分配的pvc⼤⼩是否合适，默认15g
-
-3. 检查数据库名和⽤⼾名，默认名是harbor
+直接白嫖：https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/values.yaml
 
 ```sh
-# 可以使用我提前准备好，那样就不需要修改太多了
-# https://blog.linuxtian.top/data/helm-harbor/pgo/ha-postgres.yaml
-# 修改 storageclass 为我们自己创建的，下面我就不多写了
-[root@kubesphere harbor-helm]# vim pgo/postgres_cluster/ha-postgres.yaml
-
-............................
-- name: harbor-ha-instance
-  replicas: 2
-  dataVolumeClaimSpec:
-    storageClassName: harbor-storage-nfs
-    accessModes:
-      - "ReadWriteOnce"
-    resources:
-      requests:
-        storage: 15Gi
-............................
-repos:
-  - name: repo1
-    volume:
-      volumeClaimSpec:
-        storageClassName: harbor-storage-nfs
-        accessModes:
-          - "ReadWriteOnce"
-        resources:
-          requests:
-            storage: 10Gi
-```
-
-启动服务
-
-```sh
-[root@kubesphere harbor-helm]# cd pgo/pgo_install/
-[root@kubesphere pgo_install]# kubectl create ns pgo
-[root@kubesphere pgo_install]# helm install -n pgo pgo .
-[root@kubesphere pgo_install]# kubectl get pods -n pgo
-NAME                           READY   STATUS    RESTARTS   AGE
-pgo-694f6b79bc-hc98j           1/1     Running   0          18d
-pgo-694f6b79bc-r947l           1/1     Running   0          18d
-pgo-upgrade-76fdb74df8-sxpqk   1/1     Running   0          18d
-pgo-upgrade-76fdb74df8-vtzqz   1/1     Running   0          18d
-[root@kubesphere pgo_install]# kubectl create ns postgres
-[root@kubesphere pgo_install]# kubectl -n postgres apply -f ../postgres_cluster/ha-postgres.yaml
-[root@kubesphere pgo_install]# kubectl get pods -n postgres
-NAME                               READY   STATUS      RESTARTS   AGE
-harbor-backup-m7r5-5ck96           0/1     Completed   0          26s
-harbor-harbor-ha-instance-2q5w-0   4/4     Running     0          43s
-harbor-harbor-ha-instance-wk2r-0   4/4     Running     0          39s
-harbor-pgbouncer-f4ccf6d84-8rssp   2/2     Running     0          42s
-harbor-pgbouncer-f4ccf6d84-mdwdb   2/2     Running     0          42s
-harbor-repo-host-0                 2/2     Running     0          42s
-```
-
-### 2. 部署 redis 服务
-
-> Redis 采⽤哨兵模式启动，使⽤helm 安装，服务供harbor调⽤
->
-> Redis 的主要配置是 values.yaml
->
-> 检查事项：
->
-> 检查副本数量，默认是3
->
-> masterGroupName参数设置，默认值是mymaster
->
-> storageclass名称，默认没添加需要添加：storageClass: "harbor-storage-nfs"
-
-```sh
-[root@kubesphere pgo_install]# cd ../../redis-ha/
-
-# 我准备好的
-# https://blog.linuxtian.top/data/helm-harbor/redis/values.yaml
-[root@kubesphere redis-ha]# vim values.yaml
-```
-
-启动服务
-
-```sh
-[root@kubesphere redis-ha]# kubectl create ns redis
-[root@kubesphere redis-ha]# helm install -n redis redis .
-[root@kubesphere was]# kubectl get pods -n redis
-NAME                      READY   STATUS    RESTARTS   AGE
-redis-redis-ha-server-0   3/3     Running   0          18d
-redis-redis-ha-server-1   3/3     Running   0          18d
-redis-redis-ha-server-2   3/3     Running   0          18d
-```
-
-### 3. 部署 harbor
-
-> 主要配置⽂件是 value.yaml ⽂件,部署harbor 需要获取postgres 和redis 的信息
->
-> Postgres 数据库访问信息全部保存在 secret 中，获取⽅法如下:
-
-**获取password**
-
-```sh
-[root@kubesphere redis-ha]# cd ../harbor/harbor-1.8.3/
-[root@VM-16-9-centos helm-harbor]# kubectl get secrets -n postgres harbor-pguser-harbor -o json | jq -r '.data.password' | base64 --decode
-MksG^-5s.^NDR+>ZT]Xj>]Uf[root@VM-16-9-centos helm-harbor]#
-```
-
-**获取 host 的 svc**
-
-```sh
-[root@VM-16-9-centos helm-harbor]# kubectl get secrets -n postgres harbor-pguser-harbor -o json | jq -r '.data.host'| base64 --decode
-harbor-primary.postgres.svc[root@kubesphere harbor-1.8.3]#
-```
-
-**检查事项**
-
-```sh
-
-# harbor 访问部分
-
-1. 25行，commonName: "192.168.20.120"   IP 地址和域名自己随意配置，后期 docker login  你喜欢用地址就写 IP，喜欢用域名就写域名
-
-2. 81行，nodePort: 30080
-
-3. 86行，nodePort: 30443
-
-4. 122行，externalURL: https://192.168.20.120:30443      因为nodeport是30443，所以得加端口
-
-5. 355行，harborAdminPassword: "Harbor12345"  自定义修改数据库密码
-
-# database 数据库部分
-
-1. 704行，type: external ，默认值是internal
-
-2. 740行:，host: "harbor-primary.postgres.svc" 与上⾯获取到pg host 信息保持⼀致
-
-3. 743行，password: "password"， 与上⾯获取到pg password信息保持⼀致
-
-4. 754行，sslmode: "require"
-
-# redis 部分
-
-1. 768行，type: external，默认值是internal
-
-2. 790行，addr: "redis-redis-ha.redis.svc:26379"， 与上⾯获取到 redis svc信息保持⼀致
-
-3. 792行，sentinelMasterSet: "mymaster"， 与上⾯获取到 redis sentinelMasterSet信息保持⼀致
-
-# pvc 部分
-# registry
-1. 215行，storageClass: "harbor-storage-nfs"
-2. 218行，size: 300Gi  大小根据实际共享存储大小来定义
-# jobservice
-3. 227行，storageClass: "harbor-storage-nfs"
-4. 230行，size: 100Gi  大小根据实际共享存储大小来定义
-```
-
-如果外部访问方式是 ingress的话，那么会与需要以下配置
-
-```sh
+$ vim values.yaml
 expose:
   type: ingress
+  tls:
+    enabled: true
+    certSource: secret
+    auto:
+    secret:
+      secretName: "harbor-tls"
+      notarySecretName: "harbor-notary-tls"
+  ingress:
+    hosts:
+      core: harbor.demo.com
+      notary: harbor-notary.demo.com
+    controller: default
+    kubeVersionOverride: ""
+    annotations:
+      kubernetes.io/ingress.class: "nginx"
+      ingress.kubernetes.io/ssl-redirect: "true"
+      ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  clusterIP:
+    name: harbor
+    ports:
+      httpPort: 80
+      httpsPort: 443
+      notaryPort: 4443
+  nodePort:
+    name: harbor
+    ports:
+      http:
+        port: 80
+      https:
+        port: 443
+      notary:
+        port: 4443
+  loadBalancer:
+    name: harbor
+    IP: ""
+    ports:
+      httpPort: 80
+      httpsPort: 443
+      notaryPort: 4443
+externalURL: https://harbor.demo.com
+
+internalTLS:
+  enabled: false
+  certSource: "auto"
+  trustCa: ""
+  core:
+    secretName: ""
+    crt: ""
+    key: ""
+  jobservice:
+    secretName: ""
+    crt: ""
+    key: ""
+  registry:
+    secretName: ""
+    crt: ""
+    key: ""
+  portal:
+    secretName: ""
+    crt: ""
+    key: ""
+  chartmuseum:
+    secretName: ""
+    crt: ""
+    key: ""
+  trivy:
+    secretName: ""
+    crt: ""
+    key: ""
+
+ipFamily:
+  ipv6:
+    enabled: true
+  ipv4:
+    enabled: true
+
+persistence:
+ enabled: true
+ resourcePolicy: "keep"
+ persistentVolumeClaim:
+   registry:
+     storageClass: "harbor-storage-nfs"
+     accessMode: ReadWriteMany
+     size: 300Gi
+   chartmuseum:
+     storageClass: "harbor-storage-nfs"
+     accessMode: ReadWriteOnce
+     size: 10Gi
+   jobservice:
+     storageClass: "harbor-storage-nfs"
+     accessMode: ReadWriteMany
+     size: 100Gi
+   database:
+     storageClass: "harbor-storage-nfs"
+     accessMode: ReadWriteOnce
+     size: 100Gi
+   redis:
+     storageClass: "harbor-storage-nfs"
+     accessMode: ReadWriteOnce
+     size: 10Gi
+   trivy:
+     storageClass: "harbor-storage-nfs"
+     accessMode: ReadWriteOnce
+     size: 10Gi
+   
+imageChartStorage:
+  disableredirect: false
+
+  type: filesystem
+  filesystem:
+    rootdirectory: /storage
+  azure:
+    accountname: accountname
+    accountkey: base64encodedaccountkey
+    container: containername
+  gcs:
+    bucket: bucketname
+    encodedkey: base64-encoded-json-key-file
+  s3:
+    region: us-west-1
+    bucket: bucketname
+  swift:
+    authurl: https://storage.myprovider.com/v3/auth
+    username: username
+    password: password
+    container: containername
+  oss:
+    accesskeyid: accesskeyid
+    accesskeysecret: accesskeysecret
+    region: regionname
+    bucket: bucketname
+
+imagePullPolicy: IfNotPresent
+
+imagePullSecrets:
+
+updateStrategy:
+  type: RollingUpdate
+
+logLevel: info
+
+harborAdminPassword: "Harbor12345"
+
+caSecretName: ""
+
+secretKey: "not-a-secure-key"
+
+proxy:
+  httpProxy:
+  httpsProxy:
+  noProxy: 127.0.0.1,localhost,.local,.internal
+  components:
+    - core
+    - jobservice
+    - trivy
+
+nginx:
+  image:
+    repository: goharbor/nginx-photon
+    tag: v2.4.3
+  replicas: 3
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  priorityClassName:
+
+portal:
+  image:
+    repository: goharbor/harbor-portal
+    tag: v2.4.3
+  replicas: 3
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  priorityClassName:
+
+core:
+  image:
+    repository: goharbor/harbor-core
+    tag: v2.4.3
+  replicas: 3
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  secret: ""
+  secretName: ""
+  xsrfKey: ""
+  priorityClassName:
+
+jobservice:
+  image:
+    repository: goharbor/harbor-jobservice
+    tag: v2.4.3
+  replicas: 3
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  maxJobWorkers: 10
+  jobLoggers:
+    - file
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  secret: ""
+  priorityClassName:
+
+registry:
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  registry:
+    image:
+      repository: goharbor/registry-photon
+      tag: v2.4.3
+  controller:
+    image:
+      repository: goharbor/harbor-registryctl
+      tag: v2.4.3
+
+  replicas: 3
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  priorityClassName:
+  secret: ""
+  relativeurls: false
+  credentials:
+    username: "harbor_registry_user"
+    password: "harbor_registry_password"
+
+  middleware:
+    enabled: false
+    type: cloudFront
+    cloudFront:
+      baseurl: example.cloudfront.net
+      keypairid: KEYPAIRID
+      duration: 3000s
+      ipfilteredby: none
+      privateKeySecret: "my-secret"
+
+chartmuseum:
   enabled: true
-  certSource: auto
-    #commonName: "k8s.harbor.com"
-  secret:
-    secretName: "k8s.harbor.com"
-    notarySecretName: "k8s.harbor.com"
-ingress:
-  hosts:
-    core: k8s.harbor.com
-    notary: k8s.harbor.com
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  absoluteUrl: false
+  image:
+    repository: goharbor/chartmuseum-photon
+    tag: v2.4.3
+  replicas: 3
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  priorityClassName:
+  indexLimit: 0
 
-externalURL: https://k8s.harbor.com
+trivy:
+  enabled: true
+  image:
+    repository: goharbor/trivy-adapter-photon
+    tag: v2.4.3
+  serviceAccountName: ""
+  automountServiceAccountToken: false
+  replicas: 3
+  debugMode: false
+  vulnType: "os,library"
+  severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+  ignoreUnfixed: false
+  insecure: false
+  gitHubToken: ""
+  skipUpdate: false
+  offlineScan: false
+  timeout: 5m0s
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podAnnotations: {}
+  priorityClassName:
+
+notary:
+  enabled: true
+  server:
+    serviceAccountName: ""
+    automountServiceAccountToken: false
+    image:
+      repository: goharbor/notary-server-photon
+      tag: v2.4.3
+    replicas: 3
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    podAnnotations: {}
+    priorityClassName:
+  signer:
+    serviceAccountName: ""
+    automountServiceAccountToken: false
+    image:
+      repository: goharbor/notary-signer-photon
+      tag: v2.4.3
+    replicas: 3
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    podAnnotations: {}
+    priorityClassName:
+  secretName: ""
+
+database:
+  type: internal # 如果使用外部数据库，请将"type"设置为"external"
+  internal:
+    serviceAccountName: ""
+    automountServiceAccountToken: false
+    image:
+      repository: goharbor/harbor-db
+      tag: v2.4.3
+    replicas: 3
+    password: "changeit"
+    shmSizeLimit: 512Mi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    priorityClassName:
+    initContainer:
+      migrator: {}
+      permissions: {}
+  external:
+    host: "192.168.0.1"
+    port: "5432"
+    username: "user"
+    password: "password"
+    coreDatabase: "registry"
+    notaryServerDatabase: "notary_server"
+    notarySignerDatabase: "notary_signer"
+    sslmode: "require"
+  maxIdleConns: 100
+  maxOpenConns: 900
+  podAnnotations: {}
+
+redis:
+  type: internal # 如果使用外部数据库，请将"type"设置为"external"
+  internal:
+    serviceAccountName: ""
+    automountServiceAccountToken: false
+    image:
+      repository: goharbor/redis-photon
+      tag: v2.4.3
+    replicas: 3
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    priorityClassName:
+  external:
+    # support redis, redis+sentinel
+    # addr for redis: <host_redis>:<port_redis>
+    # addr for redis+sentinel: <host_sentinel1>:<port_sentinel1>,<host_sentinel2>:<port_sentinel2>,<host_sentinel3>:<port_sentinel3>
+    addr: "redis-redis-ha.redis.svc:26379"
+    sentinelMasterSet: "mymaster"
+    coreDatabaseIndex: "0"
+    jobserviceDatabaseIndex: "1"
+    registryDatabaseIndex: "2"
+    chartmuseumDatabaseIndex: "3"
+    trivyAdapterIndex: "5"
+    password: ""
+  podAnnotations: {}
+
+exporter:
+    replicas: 3
+    podAnnotations: {}
+    serviceAccountName: ""
+    automountServiceAccountToken: false
+    image:
+      repository: goharbor/harbor-exporter
+      tag: v2.4.3
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    cacheDuration: 23
+    cacheCleanInterval: 14400
+    priorityClassName:
+
+metrics:
+  enabled: false
+  core:
+    path: /metrics
+    port: 8001
+  registry:
+    path: /metrics
+    port: 8001
+  jobservice:
+    path: /metrics
+    port: 8001
+  exporter:
+    path: /metrics
+    port: 8001
+  serviceMonitor:
+    enabled: false
+    additionalLabels: {}
+    interval: ""
+    metricRelabelings: []
+    relabelings: []
+
+trace:
+  enabled: false
+  provider: jaeger
+  sample_rate: 1
+  jaeger:
+    endpoint: http://hostname:14268/api/traces
+  otel:
+    endpoint: hostname:4318
+    url_path: /v1/traces
+    compression: false
+    insecure: true
+    timeout: 10s
 ```
 
-**修该pvc**
+#### 1.5 启动服务
 
 ```sh
+$ helm repo add harbor https://helm.goharbor.io
 
-```
+# 在线启动
+$ helm upgrade --install harbor harbor/harbor -f values.yaml -n harbor
 
-启动服务
+# 本地启动
+$ helm pull harbor/harbor --version 1.8.3
 
-```sh
-# 这里就不一一修改了，直接用提供好的配置文件然后自己修改修改
-# https://blog.linuxtian.top/data/helm-harbor/harbor/values.yaml
-[root@kubesphere harbor-1.8.3]# vim values.yaml
-[root@kubesphere harbor-1.8.3]# kubectl create ns harbor
-[root@kubesphere harbor-1.8.3]# helm install -n harbor harbor .
-[root@kubesphere harbor-1.8.3]# kubectl get pods -n harbor
-NAME                                 READY   STATUS    RESTARTS       AGE
-harbor-core-7d9465c84c-9fmf7         1/1     Running   1 (18d ago)    18d
-harbor-core-7d9465c84c-tmj5x         1/1     Running   12 (18d ago)   18d
-harbor-core-7d9465c84c-zgcsx         1/1     Running   1 (18d ago)    18d
-harbor-jobservice-5bc6f6bb7d-4z2st   1/1     Running   0              18d
-harbor-jobservice-5bc6f6bb7d-h57h7   1/1     Running   12 (18d ago)   18d
-harbor-jobservice-5bc6f6bb7d-wpzvs   1/1     Running   0              18d
-harbor-nginx-749c899565-gw8zj        1/1     Running   2 (18d ago)    18d
-harbor-nginx-749c899565-mhngd        1/1     Running   0              18d
-harbor-nginx-749c899565-x5zdw        1/1     Running   2 (18d ago)    18d
-harbor-portal-57cf48cfc8-cdbz4       1/1     Running   0              18d
-harbor-portal-57cf48cfc8-gt8m7       1/1     Running   0              18d
-harbor-portal-57cf48cfc8-wnndw       1/1     Running   0              18d
-harbor-registry-54d4d76bc5-4fxrv     2/2     Running   0              18d
-harbor-registry-54d4d76bc5-jx7b2     2/2     Running   0              18d
-harbor-registry-54d4d76bc5-v4mmm     2/2     Running   0              18d
-```
+$ tar xf harbor-1.8.3.tgz
 
-![](/images/posts/Linux-Kubernetes/Kubernetes部署harbor服务/1.png)
-![](/images/posts/Linux-Kubernetes/Kubernetes部署harbor服务/2.png)
-![](/images/posts/Linux-Kubernetes/Kubernetes部署harbor服务/3.png)
+$ cp values.yaml harbor/values.yaml
 
-### 4. docker login 证书配置
+$ helm install harbor harbor/harbor -f harbor/values.yaml -n harbor
 
-```sh
-[root@kubesphere certs.d]# mkdir 10.135.139.130:30443
-[root@kubesphere certs.d]# cd 10.135.139.130\:30443/
-[root@kubesphere certs.d]# kubectl get secrets  -n harbor harbor-nginx
-[root@kubesphere certs.d]# kubectl get secrets  -n harbor harbor-nginx -o jsonpath="{.data.ca\.crt}" | base64 --decode > server.crt
-[root@kubesphere 10.135.139.130:30443]# ls
-server.crt
-[root@kubesphere 10.135.139.130:30443]# docker login 10.135.139.130:30443 -u admin -p 1qaz@WSX
-WARNING! Using --password via the CLI is insecure. Use --password-stdin.
-WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+# harbor-jobservice 的 pvc 好像有问题，需要手动删除然后重新创建一个
 
-Login Succeeded
-```
+$ kubectl delete pvc -n harbor harbor-jobservice
 
-ingress 访问公钥
-
-```sh
-[root@kubesphere k8s.harbor.com:443]# kubectl get secrets -n harbor harbor-ingress -o jsonpath="{.data.ca\.crt}" | base64 --decode > server.crt
-[root@kubesphere k8s.harbor.com:443]# docker login  k8s.harbor.com:443 -u admin -p Harbor12345
-WARNING! Using --password via the CLI is insecure. Use --password-stdin.
-WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
-Configure a credential helper to remove this warning. See
-https://docs.docker.com/engine/reference/commandline/login/#credentials-store
-
-Login Succeeded
-[root@kubesphere ~]# docker tag nginx:latest k8s.harbor.com:443/library/nginx:latest
-[root@kubesphere ~]# docker push k8s.harbor.com:443/library/nginx:latest
-The push refers to repository [k8s.harbor.com:443/library/nginx]
-d874fd2bc83b: Pushed
-32ce5f6a5106: Pushed
-f1db227348d0: Pushed
-b8d6e692a25e: Pushed
-e379e8aedd4d: Pushing [==================================================>]     62MB
-2edcec3590a4: Pushing [======================================>            ]  61.93MB/80.37MB
-```
-
-### 5. CoreDNS 添加 hosts 解析
-
-```sh
-[root@kubesphere ~]# kubectl edit configmap -n kube-system coredns
-# Please edit the object below. Lines beginning with a '#' will be ignored,
-# and an empty file will abort the edit. If an error occurs while saving this file will be
-# reopened with the relevant failures.
-#
+$ vim harbor-jobservice-pvc.yaml
 apiVersion: v1
-data:
-  Corefile: |
-    .:53 {
-        errors
-        health {
-           lameduck 5s
-        }
+kind: PersistentVolumeClaim
+metadata:
+  name: harbor-jobservice
+  namespace: harbor
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "nfs-provisioner-storage"
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
 
-        hosts {
-          192.168.20.120 k8s.harbor.com
-          192.168.20.121 k8s.harbor.com
-          fallthrough
-.........................
+$ kubectl apply -f harbor-jobservice-pvc.yaml
 ```
 
-重启 pod 进行验证
+### 2. 外置 redis 和 postgres
+
+只需要将 databases 和 redis 的 type 模式设置为 external 即可，然后修改相关地址端口和密码数据库信息
+
+外置 redis 好像只能用 sentinel 模式
+
+#### 2.1 部署 redis-cluster
 
 ```sh
-[root@kubesphere ~]# kubectl delete pods -n kube-system `kubectl get pods -n kube-system |grep coredns |awk {'print $1'}`
-[root@kubesphere ~]# kubectl exec -it jekyll-6589bc94c7-fgttl -- bash
-root@jekyll-6589bc94c7-fgttl:/# apt-get install -y inetutils-ping
-root@jekyll-6589bc94c7-fgttl:/# ping k8s.harbor.com
-PING k8s.harbor.com (192.168.20.120): 56 data bytes
-64 bytes from 192.168.20.120: icmp_seq=0 ttl=64 time=0.166 ms
-64 bytes from 192.168.20.120: icmp_seq=1 ttl=64 time=0.060 ms
-64 bytes from 192.168.20.120: icmp_seq=2 ttl=64 time=0.135 ms
-64 bytes from 192.168.20.120: icmp_seq=3 ttl=64 time=0.052 ms
-^C--- k8s.harbor.com ping statistics ---
-4 packets transmitted, 4 packets received, 0% packet loss
-round-trip min/avg/max/stddev = 0.052/0.103/0.166/0.049 ms
+$ helm repo add bitnami https://charts.bitnami.com/bitnami
+
+$ helm search repo bitnami/redis --versions
+
+$ helm pull bitnami/redis-cluster --version 7.6.1
+
+$ tar xf redis-cluster-7.6.1.tgz
+
+$ cp redis-cluster/values.yaml redis-cluster/values.yaml.bak
+
+$ vim redis-cluster/values.yaml
+
+## 全局配置中未定义 storageClass: ""，会使用集群默认的 storageClass，
+## 此处 k8s 集群的默认 storageClass 为 nfs，底层为 华为云 SFS Turbo
+## 使用此文档部署，需要自行解决 storageClass 问题 (ceph, nfs, 公有云提供的 nfs)
+global:
+  redis:
+    password: "admin123456"                # 定义 redis 密码
+
+persistence:
+  storageClass: "nfs-provisioner-storage"
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+image:
+  registry: docker.io
+  repository: bitnami/redis-cluster
+  tag: 7.2.0-debian-11-r0
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+  runAsUser: 1001
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+
+service:
+  ports:
+    redis: 6379
+  nodePorts:
+    redis: ""
+  type: ClusterIP
+  clusterIP: ""
+  loadBalancerIP: ""
+
+  livenessProbe:                # 修改了 livenessProbe 的探测时间
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe:               # 修改了 readinessProbe 的探测时间
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 5
+  startupProbe:         # 修改了 startupProbe 的探测时间
+    enabled: false
+    path: /
+    initialDelaySeconds: 300
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 6
+    successThreshold: 1
+
+  nodeSelector: {}           # 设置了服务的 node 亲和性，确保服务运行在指定的节点 （部分 k8s-node 节点运行中间件，部分 k8s-node 节点运行业务）
+updateJob:
+  nodeSelector: {}           # 设置了服务的 node 亲和性，确保服务运行在指定的节点 （部分 k8s-node 节点运行中间件，部分 k8s-node 节点运行业务）
+
+
+$ kubectl create ns redis-cluster
+
+$ helm install redis-cluster bitnami/redis-cluster -f redis-cluster/values.yaml -n redis-cluster
+
+$ kubectl get pods -n redis-cluster
+
+$ kubectl get secret -n redis-cluster redis-cluster -o jsonpath="{.data.redis-password}" | base64 --decode
+
+$ export REDIS_PASSWORD=$(kubectl get secret --namespace "redis-cluster" redis-cluster -o jsonpath="{.data.redis-password}" | base64 -d)
+
+$ kubectl run --namespace redis-cluster redis-cluster-client --rm --tty -i --restart='Never' \
+ --env REDIS_PASSWORD=$REDIS_PASSWORD \
+--image docker.io/bitnami/redis-cluster:7.2.0-debian-11-r0 -- bash
+
+$ redis-cli -c -h redis-cluster -a $REDIS_PASSWORD
+
+$ cluster info
+
+$ cluster nodes
 ```
 
-## 三、更改域名信息和证书信息
-
-### 1. 更换访问域名
+#### 2.2 部署 redis-sentinel
 
 ```sh
-[root@kubesphere ~]# kubectl edit cm -n harbor harbor-core -o yaml
-# 修改
-  EXT_ENDPOINT: https://harbor.test.com
-[root@kubesphere ~]# kubectl rollout restart deployment -n harbor harbor-core
+$ helm repo add dandydev https://dandydeveloper.github.io/charts
+
+$ helm search repo dandydev/redis-ha --versions
+
+$ tar xf redis-ha-4.17.4.tgz
+
+$ cp redis-ha/values.yaml redis-ha/values.yaml.bak
+
+# 修改 auth: false 为 auth: true 取消 password 的注释并设置自定义密码
+# 修改 hardAntiAffinity: true 为 hardAntiAffinity: false 使其允许 pod 运行在同一台机器上
+# 修改 storageClass 使用的 sc 名称
+$ vim redis-ha/values.yaml
+
+$ kubectl create ns redis-sentinel
+
+$ helm install redis-sentinel dandydev/redis-ha -f redis-ha/values.yaml -n redis-sentinel
+
+$ kubectl exec -it redis-sentinel-redis-ha-server-0 -n redis-sentinel -c redis -- sh
+
+$ redis-cli -h redis-sentinel-redis-ha.redis-sentinel.svc.cluster.local
 ```
 
-### 2. 更换证书
+harbor 修改外部 redis 即可
+
+```sh
+  external:
+    # support redis, redis+sentinel
+    # addr for redis: <host_redis>:<port_redis>
+    # addr for redis+sentinel: <host_sentinel1>:<port_sentinel1>,<host_sentinel2>:<port_sentinel2>,<host_sentinel3>:<port_sentinel3>
+    addr: "redis-sentinel-redis-ha.redis-sentinel.svc:26379"
+    sentinelMasterSet: "mymaster"
+    coreDatabaseIndex: "0"
+    jobserviceDatabaseIndex: "1"
+    registryDatabaseIndex: "2"
+    chartmuseumDatabaseIndex: "3"
+    trivyAdapterIndex: "5"
+    password: "sentinel123456"
+```
+
+#### 2.3 部署 postgresql-cluster
+
+**方法一:**
+
+官方文档: https://access.crunchydata.com/documentation/postgres-operator/5.0.0/tutorial/create-cluster/
+
+包不太好找了我直接提供: 
+- https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/harbor/postgres-ha.zip
+
+```sh
+$ unzip postgres-ha.zip
+
+$ cd postgres-ha.zip
+
+$ helm install pgo . -n pgo --create-namespace
+
+$ kubectl apply -f ha-postgres.yaml -n postgres
+
+$ kubectl get secrets -n postgres harbor-pguser-harbor -o 'jsonpath={.data.password}' | base64 -d
+
+$ kubectl get secrets -n postgres harbor-pguser-harbor -o 'jsonpath={.data.host}' | base64 -d
+```
+
+**方法二:**
+
+
+```sh
+$ helm search repo postgresql
+
+$ helm pull bitnami/postgresql-ha
+
+$ tar xf postgresql-ha-11.8.5.tgz
+
+$ cd postgresql-ha
+
+$ helm install postgres-ha bitnami/postgresql-ha \
+--set postgresql.password=pg12345 \
+--set postgresql.repmgrPassword=repmgr12345 \
+--set persistence.storageClass=nfs-provisioner-storage \
+--set persistence.size=8Gi \
+-n postgres-ha \
+--create-namespace
+NAME: postgres-ha
+LAST DEPLOYED: Sun Aug 20 01:25:38 2023
+NAMESPACE: postgres-ha
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: postgresql-ha
+CHART VERSION: 11.8.5
+APP VERSION: 15.4.0
+** Please be patient while the chart is being deployed **
+PostgreSQL can be accessed through Pgpool via port 5432 on the following DNS name from within your cluster:
+
+    postgres-ha-postgresql-ha-pgpool.postgres-ha.svc.cluster.local
+
+Pgpool acts as a load balancer for PostgreSQL and forward read/write connections to the primary node while read-only connections are forwarded to standby nodes.
+
+To get the password for "postgres" run:
+
+    export POSTGRES_PASSWORD=$(kubectl get secret --namespace postgres-ha postgres-ha-postgresql-ha-postgresql -o jsonpath="{.data.password}" | base64 -d)
+
+To get the password for "repmgr" run:
+
+    export REPMGR_PASSWORD=$(kubectl get secret --namespace postgres-ha postgres-ha-postgresql-ha-postgresql -o jsonpath="{.data.repmgr-password}" | base64 -d)
+
+To connect to your database run the following command:
+
+    kubectl run postgres-ha-postgresql-ha-client --rm --tty -i --restart='Never' --namespace postgres-ha --image docker.io/bitnami/postgresql-repmgr:15.4.0-debian-11-r5 --env="PGPASSWORD=$POSTGRES_PASSWORD"  \
+        --command -- psql -h postgres-ha-postgresql-ha-pgpool -p 5432 -U postgres -d postgres
+
+To connect to your database from outside the cluster execute the following commands:
+
+    kubectl port-forward --namespace postgres-ha svc/postgres-ha-postgresql-ha-pgpool 5432:5432 &
+    psql -h 127.0.0.1 -p 5432 -U postgres -d postgres
+```
+
+进入数据库创建相关数据库名称
+
+```sh
+postgres=# create database harbor;
+postgres=# CREATE USER harbor WITH PASSWORD 'harbor12345';
+postgres=# GRANT CONNECT ON DATABASE harbor TO harbor;
+postgres=# SELECT usename FROM pg_user WHERE usename = 'harbor';
+postgres=# create database registry;
+postgres=# create database notary_signer;
+postgres=# create database notary_server;
+postgres=# \q
+```
+
+修改 harbor 数据库为外置数据库
+
+```sh
+  external:
+    host: "postgres-ha-postgresql-ha-pgpool.postgres-ha"
+    port: "5432"
+    username: "harbor"
+    password: "harbor12345"
+    coreDatabase: "registry"
+    notaryServerDatabase: "notary_server"
+    notarySignerDatabase: "notary_signer"
+    sslmode: "require"
+  maxIdleConns: 100
+  maxOpenConns: 900
+  podAnnotations: {}
+```
+
+**方法二:**
+
+部署postgreSQL operator
+
+```sh
+$ helm repo add postgres-operator-charts https://opensource.zalando.com/postgres-operator/charts/postgres-operator
+
+$ helm search repo postgres-operator-charts
+NAME                                      	CHART VERSION	APP VERSION	DESCRIPTION                                       
+postgres-operator-charts/postgres-operator	1.10.0       	1.10.0     	Postgres Operator creates and manages PostgreSQ...
+
+$ helm pull postgres-operator-charts/postgres-operator
+
+$ tar xvf postgres-operator-1.10.0.tgz 
+
+$ cd postgres-operator/
+
+$ helm install postgres-operator postgres-operator-charts/postgres-operator -n postgres-operator --create-namespace
+
+$ kubectl --namespace=postgres-operator get pods -l "app.kubernetes.io/name=postgres-operator"
+
+$ helm repo add postgres-operator-ui https://opensource.zalando.com/postgres-operator/charts/postgres-operator-ui
+
+$ helm search repo postgres-operator-ui
+
+$ helm pull postgres-operator-ui/postgres-operator-ui
+
+$ tar xf postgres-operator-ui-1.10.0.tgz
+
+$ cd postgres-operator-ui
+
+$ helm install postgres-operator-ui postgres-operator-ui/postgres-operator-ui -n postgres-operator
+
+$ kubectl --namespace=postgres-operator get pods -l "app.kubernetes.io/name=postgres-operator-ui"
+
+$ wget https://raw.githubusercontent.com/zalando/postgres-operator/v1.8.2/manifests/minimal-postgres-manifest.yaml
+
+# 修改文件内容, 创建 harbor用户，并为 harbor 创建需要的3个数据库：registry、notary_server、notary_signer
+$ vim minimal-postgres-manifest.yaml
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: acid-minimal-cluster
+  namespace: postgres-operator
+spec:
+  teamId: "acid"
+  volume:
+    size: 1Gi
+    storageClass: nfs-provisioner-storage
+  numberOfInstances: 2
+  users:
+    harbor:
+    - superuser
+    - createdb
+  databases:
+    registry: harbor
+    notary_server: harbor
+    notary_signer: harbor
+  preparedDatabases:
+    registry: {}
+    notary_server: {}
+    notary_signer: {}
+  postgresql:
+    version: "14"
+
+$ kubectl apply -f minimal-postgres-manifest.yaml
+
+# 获取数据库密码
+$ kubectl -n postgres-operator get secret postgres.acid-minimal-cluster.credentials.postgresql.acid.zalan.do -o 'jsonpath={.data.password}' | base64 -d
+```
+
+harbor 配置数据库
+
+```sh
+database:
+  type: external
+  external:
+    host: "acid-minimal-cluster.postgres-operator"
+    port: "5432"
+    username: "harbor"
+    password: "H9AZVgIoXWUPgoYpQJq0Z3NoVNzxKPAZjZCApg3sUafl9lI0ixFtNGKlkeP2ieY8"
+    coreDatabase: "registry"
+    notaryServerDatabase: "notary_server"
+    notarySignerDatabase: "notary_signer"
+    sslmode: "require"
+```
+
+
+### 4. 配置docker证书
+
+```sh
+$ mkdir -p /etc/docker/certs.d/harbor.demo.com
+
+$ kubectl get secrets -n harbor harbor-ingress -o jsonpath="{.data.tls\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.demo.com/tls.crt
+
+$ docker login harbor.demo.com
+```
+
+### 5. 更换证书
+
+
+#### 5.1 使用 nodeport 类型的
 
 ```sh
 # 重新对域名或IP进行签证书，记得备份
@@ -669,24 +1119,31 @@ round-trip min/avg/max/stddev = 0.052/0.103/0.166/0.049 ms
 # 签证书
 [root@kubesphere ~]# vim script.sh
 #!/bin/bash
-openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ca.key -x509 -days 3650 -out ca.crt -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.test.com"
-openssl req -newkey rsa:4096 -nodes -sha256 -keyout tls.key -out tls.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.test.com"
+openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ca.key -x509 -days 3650 -out ca.crt -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.demo.com"
+openssl req -newkey rsa:4096 -nodes -sha256 -keyout tls.key -out tls.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor.demo.com"
 # IP地址可以多预留一些，主要是域名能解析到的地址，其他的地址写进去也没用
-echo subjectAltName = IP:192.168.1.20, IP:192.168.1.21, IP:192.168.1.110, IP:127.0.0.1, DNS:example.com, DNS:harbor.test.com > extfile.cnf
+echo subjectAltName = IP:192.168.1.20, IP:192.168.1.21, IP:192.168.1.110, IP:127.0.0.1, DNS:example.com, DNS:harbor.demo.com > extfile.cnf
 openssl x509 -req -days 3650 -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile extfile.cnf -out tls.crt
 [root@kubesphere ~]# bash script.sh
 [root@kubesphere ~]# kubectl delete secrets -n harbor harbor-nginx
+
+# 两种方式貌似都可以
 [root@kubesphere ~]# kubectl create secret generic harbor-nginx -n harbor \
 --from-file=tls.crt \
 --from-file=tls.key \
 --from-file=ca.crt
+
+# 第二种
+[root@kubesphere ~]# kubectl create secret tls harbor-nginx -n harbor \
+--cert=tls.crt \
+--key=tls.key
 [root@kubesphere ~]# kubectl rollout restart deployment -n harbor harbor-nginx
-[root@kubesphere ~]# cp ca.crt /etc/docker/certs.d/harbor.test.com/
+[root@kubesphere ~]# cp ca.crt /etc/docker/certs.d/harbor.demo.com/
 # 或者
-[root@kubesphere ~]# kubectl get secrets  -n harbor harbor-nginx -o jsonpath="{.data.ca\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.test.com/ca.crt
+[root@kubesphere ~]# kubectl get secrets  -n harbor harbor-nginx -o jsonpath="{.data.ca\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.demo.com/ca.crt
 ```
 
-### 3. 后期使用 ingress
+#### 5.2 后期使用想使用 ingress
 
 ```sh
 [root@kubesphere ~]# vim harbor-ingress.yaml
@@ -696,22 +1153,22 @@ metadata:
   name: harbor-ingress
   namespace: harbor
   annotations:
-    #kubernetes.io/ingress.class: "nginx"
+    kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 表示后端服务也是 https 格式,如果后端不是 https 请求则不需要配置,因为 harbor-nginx 本身就是 https 代理的
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     ingress.kubernetes.io/ssl-redirect: "true"
     ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
 spec:
-  ingressClassName: nginx
   tls:
   - hosts:
-    - harbor.test.com
-    secretName: harbor-nginx
+    - harbor.demo.com
+    secretName: harbor-nginx      # 使用上面创建的 secret
   rules:
-  - host: harbor.test.com
+  - host: harbor.demo.com
     http:
       paths:
       - pathType: Prefix
@@ -723,3 +1180,6 @@ spec:
               number: 443
 ```
 
+#### 5.3 更换 ingress 的证书
+
+删除旧的 ingress 和 secret 直接重新申请证书，然后创建 secret 即可

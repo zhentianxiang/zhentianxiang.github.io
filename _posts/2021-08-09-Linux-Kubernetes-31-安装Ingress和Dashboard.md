@@ -890,6 +890,34 @@ spec:
               number: 8000
 ```
 
+第二种写法
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-beian
+  namespace: jekyll
+  annotations:
+    # Ingress Controller类别
+    kubernetes.io/ingress.class: "nginx"
+    # 正则表达式来匹配路径
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - host: www.linuxtian.top
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: nginx-jekyll
+            port:
+              number: 80
+```
+
+
 ```sh
 kubectl apply -f ingress-web.yaml
 kubectl get ing
@@ -898,6 +926,7 @@ kubectl get ing
 ### 4. 使用 ingress-nginx 代理 dashboard
 
 ```sh
+[root@VM-16-9-centos dashboard]# kubectl create secret tls clash-tls --cert=./kube-dashboard.linuxtian.top.crt --key=./kube-dashboard.linuxtian.top.key
 [root@VM-16-9-centos dashboard]# cat ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
