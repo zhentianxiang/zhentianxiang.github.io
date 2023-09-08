@@ -28,13 +28,12 @@ docker-ce.x86_64             3:20.10.9-3.el7             docker-ce-20.10.9-3.el7
 所有软件安装均为 yum install 安装，脚本会自动配置本地repo源仓库，所有的repo源仓库均在以下目录
 
 ```sh
-[root@master01 package-all]# pwd
-/root/ansible-k8s-kubeadm-off-line/roles/init/files/package-all
-[root@master01 package-all]# ls
-ansible  docker-ce-20.10.9-3.el7  k8s-1.20.1  other
+[root@master01 files]# pwd
+/home/kubernetes-install/roles/init/files
+[root@master01 files]# ls
+ansible  docker-ce-19.03.15-3.el7  docker-ce-20.10.9-3.el7  k8s-1.20.1  k8s-1.23.0  k8s-1.25.1  mirrors.tar.gz  my-default.conf  nginx-1.20.1  nginx-all-modules  other
 ```
-
-如果要更换版本，请将所需要的rpm包放入到package-all目录下即可，随后自己定义目录名称，如docker-19.03.15、k8s-1.21.1，然后将所有的rpm包放入到该目录
+如果想要更换版本之类的，只需要提前准备好 rpm 包然后创建好索引文件，放到 files 目录中就行，最后 tar -zcvf mirrors.tar.gz . 打包好即可，注意：别把 mirrors.tar.gz 自身也打进去了，没必要占用无用空间
 
 下载rpm包使用以下命令
 
@@ -53,7 +52,7 @@ ansible  docker-ce-20.10.9-3.el7  k8s-1.20.1  other
 当然也可以放进同一rpm包目录中，分开仅仅是为了好区分，最后在配置以下repo源文件
 
 ```sh
-[root@master01 package-all]# vim ../../templates/CentOS-Base.repo.j2
+[root@master01 package-all]# vim ../../templates/CentOS-local.repo.j2
 
 [docker-ce-19.03.15-3.el7]
 name=ansible
@@ -70,11 +69,7 @@ enabled=1
 
 ### 1. 目录详情
 
-k8s+docker代码地址: 链接：https://pan.baidu.com/s/1_9shFqq6gvuP9YKoU_7xYw?pwd=z6zk
-提取码：z6zk
-
-k8s+containerd代码地址: 链接：https://pan.baidu.com/s/1ItNrWyQnvRsNvuRuLtzu-g?pwd=h4ox
-提取码：h4ox
+链接: https://pan.baidu.com/s/1X4pkTn98i6W_Ax39LwC0tA?pwd=qmwu 提取码: qmwu
 
 ```sh
 [root@master01 ansible-k8s-kubeadm-off-line]# ll
@@ -216,5 +211,5 @@ node02
 ### 8. 视频演示
 
 <video width="1200" height="600" controls>
-    <source src="https://blog.linuxtian.top/data/ansible-k8s-kubeadm-off-line.mp4" type="video/mp4">
+    <source src="https://blog.linuxtian.top/data/9-ansible/ansible%E8%87%AA%E5%8A%A8%E9%83%A8%E7%BD%B2k8s.mp4" type="video/mp4">
 </video>
