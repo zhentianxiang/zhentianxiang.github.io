@@ -1103,7 +1103,7 @@ database:
 ```sh
 $ mkdir -p /etc/docker/certs.d/harbor.demo.com
 
-$ kubectl get secrets -n harbor harbor-ingress -o jsonpath="{.data.tls\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.demo.com/tls.crt
+$ kubectl get secrets -n harbor harbor-tls -o jsonpath="{.data.tls\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.demo.com/tls.crt
 
 $ docker login harbor.demo.com
 ```
@@ -1115,7 +1115,7 @@ $ docker login harbor.demo.com
 
 ```sh
 # 重新对域名或IP进行签证书，记得备份
-[root@kubesphere ~]# kubectl get secrets -n harbor harbor-nginx -o yaml > harbor-nginx-secret.yaml
+[root@kubesphere ~]# kubectl get secrets -n harbor harbor-tls -o yaml > harbor-nginx-secret.yaml
 # 签证书
 [root@kubesphere ~]# vim script.sh
 #!/bin/bash
@@ -1125,22 +1125,22 @@ openssl req -newkey rsa:4096 -nodes -sha256 -keyout tls.key -out tls.csr -subj "
 echo subjectAltName = IP:192.168.1.20, IP:192.168.1.21, IP:192.168.1.110, IP:127.0.0.1, DNS:example.com, DNS:harbor.demo.com > extfile.cnf
 openssl x509 -req -days 3650 -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile extfile.cnf -out tls.crt
 [root@kubesphere ~]# bash script.sh
-[root@kubesphere ~]# kubectl delete secrets -n harbor harbor-nginx
+[root@kubesphere ~]# kubectl delete secrets -n harbor harbor-tls
 
 # 两种方式貌似都可以
-[root@kubesphere ~]# kubectl create secret generic harbor-nginx -n harbor \
+[root@kubesphere ~]# kubectl create secret generic harbor-tls -n harbor \
 --from-file=tls.crt \
 --from-file=tls.key \
 --from-file=ca.crt
 
 # 第二种
-[root@kubesphere ~]# kubectl create secret tls harbor-nginx -n harbor \
+[root@kubesphere ~]# kubectl create secret tls harbor-tls -n harbor \
 --cert=tls.crt \
 --key=tls.key
 [root@kubesphere ~]# kubectl rollout restart deployment -n harbor harbor-nginx
 [root@kubesphere ~]# cp ca.crt /etc/docker/certs.d/harbor.demo.com/
 # 或者
-[root@kubesphere ~]# kubectl get secrets  -n harbor harbor-nginx -o jsonpath="{.data.ca\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.demo.com/ca.crt
+[root@kubesphere ~]# kubectl get secrets  -n harbor harbor-tls -o jsonpath="{.data.ca\.crt}" | base64 --decode > /etc/docker/certs.d/harbor.demo.com/ca.crt
 ```
 
 #### 5.2 后期使用想使用 ingress
@@ -1166,7 +1166,7 @@ spec:
   tls:
   - hosts:
     - harbor.demo.com
-    secretName: harbor-nginx      # 使用上面创建的 secret
+    secretName: harbor-tls      # 使用上面创建的 secret
   rules:
   - host: harbor.demo.com
     http:
