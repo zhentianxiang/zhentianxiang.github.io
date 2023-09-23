@@ -425,6 +425,61 @@ openai_api_key: ""
 [root@VM-16-9-centos chatgpt-web-share]# kubectl apply -f .
 ```
 
+自动更新服务脚本,在控制台上修改openai会话token后自动检查后重启 pod
+
+```sh
+[root@VM-16-9-centos chatgpt-web-share]# vim chatgpt-web_monitor.sh 
+#!/bin/bash
+
+# 监测的配置文件路径
+config_file="/data/chatgpt-web/data/config/config.yaml"
+credentials_file="/data/chatgpt-web/data/config/credentials.yaml"
+
+# 输出的log文件
+log_file="/var/log/chatgpt-web_monitor.log"
+
+# 初始化md5值为空
+old_md5_config=""
+old_md5_credentials=""
+
+# 无限循环，每隔一分钟执行一次
+while true; do
+    # 获取当前config.yaml和credentials.yaml文件的md5值
+    current_md5_config=$(md5sum "$config_file" | awk '{print $1}')
+    current_md5_credentials=$(md5sum "$credentials_file" | awk '{print $1}')
+
+    # 检查哪个文件被修改，并输出到日志
+    if [[ "$current_md5_config" != "$old_md5_config" ]]; then
+        echo "$(date +'%Y-%m-%d %H:%M:%S') - $config_file 文件已修改" >> "$log_file"
+    fi
+
+    if [[ "$current_md5_credentials" != "$old_md5_credentials" ]]; then
+        echo "$(date +'%Y-%m-%d %H:%M:%S') - $credentials_file 文件已修改" >> "$log_file"
+    fi
+
+    # 如果任意文件md5值发生变化，则执行命令
+    if [[ "$current_md5_config" != "$old_md5_config" || "$current_md5_credentials" != "$old_md5_credentials" ]]; then
+        # pod 名称
+        pod_name=$(kubectl get pods -n chatgpt | grep -o 'chatgpt-web-share-[^[:space:]]*' | tail -n 1)
+        # 执行 kubectl delete 命令，并将结果输出到日志文件
+        kubectl delete pods -n chatgpt $pod_name >> "$log_file" 2>&1
+        wait
+        if [ $? -eq 0 ]; then
+            echo "$(date +'%Y-%m-%d %H:%M:%S') - 执行 kubectl delete 成功" >> "$log_file"
+        else
+            echo "$(date +'%Y-%m-%d %H:%M:%S') - 执行 kubectl delete 失败" >> "$log_file"
+        fi
+
+        # 更新old_md5的值为当前md5，以便下次比较
+        old_md5_config="$current_md5_config"
+        old_md5_credentials="$current_md5_credentials"
+    fi
+
+    # 等待60秒后再次执行
+    sleep 60
+done
+```
+
 ## 四、Nginx 代理
 
 使用 nginx 虚拟主机进行代理 chatgpt-web-share

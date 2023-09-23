@@ -42,6 +42,30 @@ ansible  docker-ce-19.03.15-3.el7  docker-ce-20.10.9-3.el7  k8s-1.20.1  k8s-1.23
 [root@master01 package-all]# yum -y install --downloadonly kubelet-21.1 kubeadm-1.21.1 kubectl-1.21.1 --downloaddir=指定rpm包存放路径
 ```
 
+
+也可以使用 `repotrack` 命令
+
+
+
+repotrack 命令通常用于从软件包仓库中下载软件包及其依赖项，而不安装它们。这对于在没有互联网连接的系统上获取软件包及其依赖项的离线安装非常有用。
+
+repotrack 命令通常与 yum 包管理器一起使用，用于下载 RPM 软件包及其依赖项。以下是 repotrack 命令的一般用法：
+
+repotrack [选项] 软件包名
+
+其中：
+
+[选项] 是一些可选的命令选项，用于指定下载的目标目录等。
+软件包名 是要下载的软件包的名称。
+例如，要使用 repotrack 下载名为 example-package 的软件包及其依赖项到当前目录，可以运行以下命令：
+
+```sh
+[root@master01 package-all]# repotrack example-package
+```
+repotrack 将会查找 example-package 及其依赖项，并将它们下载到当前目录。您可以使用不同的选项来指定下载的目标目录等。
+
+请注意，repotrack 的可用性和具体选项可能因不同的 Linux 发行版而有所不同，因此请查看您的系统文档以获取详细信息。在某些系统上，可能需要安装额外的软件包（如 yum-utils）才能使用 repotrack 命令。
+
 随后在使用 createrepo --update 命令为rpm包创建索引文件
 
 ```sh
