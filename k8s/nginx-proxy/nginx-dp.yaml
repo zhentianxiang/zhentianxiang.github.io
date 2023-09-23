@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nginx-jekyll
-  namespace: jekyll
+  namespace: blog
   labels:
     app: nginx-jekyll
 spec:
@@ -23,7 +23,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-jekyll
-  namespace: jekyll
+  namespace: blog
   labels:
     app: nginx-jekyll
 spec:
@@ -55,15 +55,15 @@ spec:
           - name: jekyll-conf
             mountPath: /etc/nginx/conf.d/jekyll.conf
             subPath: jekyll.conf
-          - name: beian-conf
-            mountPath: /etc/nginx/conf.d/beian.conf
-            subPath: beian.conf
-          - name: beian-html
-            mountPath: /opt/beian.html
-            subPath: beian.html
+          #- name: beian-conf
+          #  mountPath: /etc/nginx/conf.d/beian.conf
+          #  subPath: beian.conf
+          #- name: beian-html
+          #  mountPath: /opt/beian.html
+          #  subPath: beian.html
           - name: certificate
             mountPath: /etc/nginx/cert
-          - name: file-data
+          - name: files-data
             mountPath: /data
           - name: host-time
             mountPath: /etc/localtime
@@ -72,18 +72,18 @@ spec:
       - name: jekyll-conf
         configMap:
           name: jekyll-conf
-      - name: beian-conf
-        configMap:
-          name: beian-conf
-      - name: beian-html
-        configMap:
-          name: beian-html
+      #- name: beian-conf
+      #  configMap:
+      #    name: beian-conf
+      #- name: beian-html
+      #  configMap:
+      #    name: beian-html
       - name: certificate
         secret:
           secretName: nginx-tls
-      - name: file-data
+      - name: files-data
         hostPath:
-          path: /etc/nginx/data
+          path: /home/tianxiang/files-data
       - name: host-time
         hostPath:
           path: /etc/localtime

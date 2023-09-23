@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: nginx-jekyll
-  namespace: jekyll
+  namespace: blog
   annotations:
     # Ingress Controller类别
     kubernetes.io/ingress.class: "nginx"
@@ -31,25 +31,25 @@ spec:
             port:
               number: 443
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: nginx-beian
-  namespace: jekyll
-  annotations:
-    # Ingress Controller类别
-    kubernetes.io/ingress.class: "nginx"
-    # 正则表达式来匹配路径
-    nginx.ingress.kubernetes.io/use-regex: "true"
-spec:
-  rules:
-  - host: www.linuxtian.top
-    http:
-      paths:
-      - pathType: Prefix
-        path: "/"
-        backend:
-          service:
-            name: nginx-jekyll
-            port:
-              number: 80
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: nginx-beian
+#  namespace: blog
+#  annotations:
+#    # Ingress Controller类别
+#    kubernetes.io/ingress.class: "nginx"
+#    # 正则表达式来匹配路径
+#    nginx.ingress.kubernetes.io/use-regex: "true"
+#spec:
+#  rules:
+#  - host: www.linuxtian.top
+#    http:
+#      paths:
+#      - pathType: Prefix
+#        path: "/"
+#        backend:
+#          service:
+#            name: nginx-jekyll
+#            port:
+#              number: 80

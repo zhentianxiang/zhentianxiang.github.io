@@ -1,8 +1,29 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/http-probe: "true"        ### 设置该服务执行HTTP探测
+    prometheus.io/http-probe-port: "4000"     ### 设置HTTP探测的接口
+    prometheus.io/http-probe-path: "/"      ### 设置HTTP探测的地址   
+  name: jekyll
+  namespace: blog
+  labels:
+    app: jekyll
+spec:
+  type: NodePort
+  ports:
+  - port: 4000
+    protocol: TCP
+    targetPort: 4000
+  selector:
+    app: jekyll
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jekyll
-  namespace: jekyll
+  namespace: blog
 spec:
   replicas: 1
   selector:
@@ -54,7 +75,7 @@ spec:
       volumes:
       - name: jeyll-data
         hostPath:
-          path: "/home/tianxiang/zhentianxiang.github.io/"
+          path: "/home/tianxiang/kubernetes/zhentianxiang.github.io/"
       - name: host-time
         hostPath:
           path: /etc/localtime

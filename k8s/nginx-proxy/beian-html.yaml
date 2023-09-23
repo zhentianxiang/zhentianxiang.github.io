@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: beian-html
-  namespace: jekyll
+  namespace: blog
 data:
   beian.html: |
     <!DOCTYPE html>

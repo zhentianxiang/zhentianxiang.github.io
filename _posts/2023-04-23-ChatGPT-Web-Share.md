@@ -233,7 +233,7 @@ spec:
     spec:
       containers:
       - name: chatgpt-api
-        image: linweiyuan/go-chatgpt-api:latest
+        image: zhentianxiang/go-chatgpt-api:0.4.0-alpha4.4
         imagePullPolicy: IfNotPresent
         env:
         - name: PROXY
@@ -310,7 +310,7 @@ spec:
         chatgpt: yes
       containers:
       - name: chatgpt-web-share
-        image: moeakwak/chatgpt-web-share:0.4.0-alpha4.4
+        image: zhentianxiang/chatgpt-web-share:0.4.0-alpha4.4
         imagePullPolicy: IfNotPresent
         ports:
         - name: web
