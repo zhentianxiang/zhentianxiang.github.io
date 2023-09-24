@@ -1363,12 +1363,11 @@ prometheus-2          1/1     Running   0          142m
 ```sh
 [root@VM-16-9-centos grafana]# cat gragana-state.yaml
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: grafana
   namespace: monitoring
 spec:
-  serviceName: grafana
   replicas: 2
   selector:
     matchLabels:
@@ -1421,25 +1420,26 @@ spec:
               cpu: "1000m"
               memory: "2Gi"
           volumeMounts:
-            - mountPath: /var/lib/grafana
-              name: grafana-data
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+            - name : grafanaini
+              mountPath: /etc/grafana/grafana.ini
+              subPath: grafana.ini
             - name: host-time
               mountPath: /etc/localtime
               readOnly: true
       volumes:
+      - name: grafanaini
+        configMap:
+          name: grafanaini
       - name: host-time
         hostPath:
           path: /etc/localtime
-  volumeClaimTemplates:
-  - metadata:
-      name: grafana-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      storageClassName: nfs-provisioner-storage
-      resources:
-        requests:
-          storage: 10Gi
+      - name: grafana-data
+        persistentVolumeClaim:
+          claimName: grafana-pvc
 ```
+
 
 ### 2. service
 
@@ -1484,6 +1484,54 @@ spec:
     nodePort: 30300
   selector:
     app: grafana
+```
+
+### 3. pvc
+
+```sh
+[root@VM-16-9-centos grafana]# cat gragana-pvc.yaml 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: monitoring
+spec:
+  storageClassName: nfs-provisioner-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20G
+```
+
+### 4. ingress
+
+```sh
+[root@VM-16-9-centos grafana]# cat gragana-ingress.yaml 
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    # Ingress Controller类别
+    kubernetes.io/ingress.class: "nginx"
+    # 正则表达式来匹配路径
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # 设置为"0"表示没有限制请求体的大小
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  rules:
+  - host: grafana.linuxtian.top
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/grafana"
+        backend:
+          service:
+            name: grafana-service
+            port:
+              number: 3000
 ```
 
 ```sh
