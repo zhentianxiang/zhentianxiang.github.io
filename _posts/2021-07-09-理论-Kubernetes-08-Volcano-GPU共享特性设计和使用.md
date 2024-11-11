@@ -33,7 +33,7 @@ Volcano通过Kubernetes提供的Device plugin实现如下功能：
 
 > 
 > Yaml文件
-> 链接：http://blog.linuxtian.top:8080/HyperAI/4-Volcano-GPU-share/pod-GPU-share-gpu.yml
+> 链接：http://blog.tianxiang.love:8080/HyperAI/4-Volcano-GPU-share/pod-GPU-share-gpu.yml
 
 ```javascript
 

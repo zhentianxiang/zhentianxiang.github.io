@@ -176,6 +176,6 @@ dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq
 enable_isolated_metadata = true
 ```
 
-返回[Neutron控制节点配置](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-20-Neutron控制节点配置/)继续配置
+返回[Neutron控制节点配置](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-20-Neutron控制节点配置/)继续配置
 
-返回[Neutron计算节点配置](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-23-Neutron计算节点配置/)继续配置
+返回[Neutron计算节点配置](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-23-Neutron计算节点配置/)继续配置

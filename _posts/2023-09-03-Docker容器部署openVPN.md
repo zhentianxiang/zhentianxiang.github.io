@@ -97,35 +97,22 @@ client-to-client
 # 限制最大客户端数量
 max-clients 10
 
-# 客户端连接时运行脚本
-client-connect ovpns.script
-
-# 客户端断开连接时运行脚本
-client-disconnect ovpns.script
-
 # 保持连接时间
 keepalive 20 120
-
-# 开启vpn压缩
-comp-lzo
 
 # 允许多人使用同一个证书连接VPN，不建议使用，注释状态
 duplicate-cn
 
-### vpn服务端向客户端推送vpn服务端内网网段的路由配置，以便让客户端能够找到服务端内网。多条路由就写多个Push指令
-push "route 192.168.1.0 255.255.255.0"
-
-### 路由规则，告诉 OpenVPN 服务器要将流量路由到目标网络 192.168.254.0/24
-route 192.168.254.0 255.255.255.0
+# 路由规则，告诉 OpenVPN 服务器要将流量路由到目标网络 192.168.255.0/24
+route 192.168.255.0 255.255.255.0
 
 # vpn服务端为自己和客户端分配IP的地址池
 server 192.168.255.0 255.255.255.0
 
 ### VPN 客户端的DNS，如果内网环境有自己的DNS服务可以替换为DNS服务，这样你连接到内网环境中直接可以使用内网DNS服务器
-push "block-outside-dns"
-push "dhcp-option DNS 8.8.8.8"
-push "dhcp-option DNS 8.8.4.4"
-push "comp-lzo no"
+#push "block-outside-dns"
+#push "dhcp-option DNS 223.5.5.5"
+#push "dhcp-option DNS 114.114.114.114"
 ```
 
 ### 4. 生成密钥文件
@@ -156,38 +143,9 @@ $ docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_getcli
 ### 7. 启动openvpn
 
 ```sh
-# 建议使用第二条命令，使用 host 网络模式启动容器
-$ docker run -dit --name openvpn -v /etc/localtime:/etc/localtime -v $(pwd):/etc/openvpn -p 1194:1194/tcp --cap-add=NET_ADMIN restart=always zhentianxiang/openvpn:2.4.8
-
-$ docker run -dit --network=host --name openvpn -v /etc/localtime:/etc/localtime -v $(pwd):/etc/openvpn --cap-add=NET_ADMIN --restart=always zhentianxiang/openvpn:2.4.8
+$ docker run -dit --name openvpn -v /etc/localtime:/etc/localtime -v $(pwd):/etc/openvpn -p 1194:1194/tcp --cap-add=NET_ADMIN --restart=always zhentianxiang/openvpn:2.4.8
 ```
-
-### 8. 添加 IP tables 规则
-
-> **MASQUERADE:**
->
-> - `MASQUERADE` 操作将数据包的源地址替换为 NAT 路由器的出口接口的 IP 地址。这意味着 NAT 路由器使用自己的 IP 地址（通常是公共 IP 地址）作为数据包的源地址。
-> - `MASQUERADE` 操作特别适用于动态 IP 地址环境，因为它自动选择出口接口的 IP 地址，而无需手动配置。
-> - 它通常用于家庭网络或移动网络，其中 NAT 路由器的公共 IP 地址可能经常变化。
->
-> **SNAT:**
->
-> 总结
->
-> - `MASQUERADE` 自动选择出口接口的 IP 地址作为源地址，适用于动态 IP 地址环境。
-> - `SNAT` 允许手动指定源 IP 地址，适用于静态 IP 地址环境。
-
-```sh
-# 两种方式根据自己需求选择使用
-
-# 192.168.255.0/24 是VPN分配给的客户端地址段，em1 内网网卡
-$ iptables -t nat -A POSTROUTING -s 192.168.255.0/24 -o em1 -j MASQUERADE
-
-# 192.168.1.16 是vpn服务端内网地址
-$ iptables -t nat -A POSTROUTING -s 192.168.255.0/24 -o em1 -j SNAT --to-source 192.168.1.16
-```
-
-### 9. 用户管理
+### 8. 用户管理
 
 #### 1.1 添加用户
 
@@ -218,6 +176,116 @@ docker restart openvpn
 ```sh
 $ ./add_user.sh	#  输入要添加的用户名，回车后输入刚才创建的私钥密码
 ```
+
+### 9. 客户端文件配置
+
+
+```sh
+# 编辑 ovpn 文件，添加下面两行，第一行是拒绝服务端下发的路由配置，第二行是设定服务器短的路由
+# 比如服务器端内网地址192.168.1.0网段
+route-nopull
+route 192.168.1.0 255.255.255.0 vpn_gateway
+
+# 最后一行删除 `redirect-gateway def1` 这个配置是截取当前主机所有路由，并且全部转发到 openvpn 网关上
+```
+
+### 10. 静态路由配置
+
+```sh
+# 宿主机添加静态路由，使其宿主机能够访问到 vpn 的网段（172.17.0.3）是openvpn容器IP
+$ ip route add 192.168.255.0/24 via 172.17.0.3
+
+# 局域网内其他机器添加静态路由访问 vpn 的网段（注意，这条指令是在其他的机器上配置的）
+$ ip route add 192.168.255.0/24 via 192.168.1.16
+
+# 宿主机添加 iptables 规则允许来自外部的流量通过防火墙，以确保它可以流经 Docker 网络
+$iptables -A FORWARD -i eth0 -o docker0 -j ACCEPT
+$iptables -A FORWARD -i docker0 -o eth0 -j ACCEPT
+```
+
+### 11. 监控脚本
+
+用来监控容器是否退出，如果退出则重新启动容器
+```sh
+$ cat monitor_openvpn.sh 
+#!/bin/bash
+
+# 设置日志文件路径
+LOG_FILE="/var/log/monitor_openvpn_container.log"
+
+# 设置检查间隔（秒）
+CHECK_INTERVAL=300
+
+# 容器名称或ID的搜索模式
+CONTAINER_NAME_PATTERN="openvpn"
+
+# 函数：记录日志
+function log_message {
+    echo "$(date): $1" >> "$LOG_FILE"
+}
+
+# 无限循环检查容器状态
+while true; do
+    # 使用docker ps -qf来查找匹配的容器ID
+    CONTAINER_ID=$(docker ps -qf "name=$CONTAINER_NAME_PATTERN")
+
+    # 如果找不到容器ID，则容器不存在
+    if [ -z "$CONTAINER_ID" ]; then
+        log_message "$CONTAINER_NAME_PATTERN 容器不存在，正在重启..."
+
+        # 重启容器
+        docker restart "$CONTAINER_NAME_PATTERN" || {
+            log_message "重启 $CONTAINER_NAME_PATTERN 容器失败"
+            sleep $CHECK_INTERVAL
+            continue
+        }
+
+        # 等待一小段时间以确保容器已经启动
+        sleep 5
+
+        # 验证容器是否成功启动
+        CONTAINER_ID=$(docker ps -qf "name=$CONTAINER_NAME_PATTERN")
+        if [ -n "$CONTAINER_ID" ]; then
+            log_message "$CONTAINER_NAME_PATTERN 容器已启动"
+        else
+            log_message "$CONTAINER_NAME_PATTERN 容器启动失败"
+        fi
+    fi
+
+    # 等待下一个检查间隔
+    sleep $CHECK_INTERVAL
+done 2>&1 >> "$LOG_FILE" # 将所有输出（包括标准输出和标准错误）重定向到日志文件
+
+$ vim /etc/systemd/system/monitor_openvpn.service
+
+[Unit]
+Description=Monitor openvpn Docker container
+After=docker.service
+
+[Service]
+Type=simple
+Restart=always
+User=root
+ExecStart=/home/docker-app/openvpn/monitor_openvpn.sh
+ExecStop=  
+
+[Install]
+WantedBy=default.target
+
+$ systemctl daemon-reload
+$ systemctl enable monitor_openvpn.service --now
+$ systemctl status monitor_openvpn.service 
+● monitor_openvpn.service - Monitor openvpn Docker container
+     Loaded: loaded (/etc/systemd/system/monitor_openvpn.service; enabled; vendor preset: enabled)
+     Active: active (running) since Thu 2024-05-02 22:57:41 CST; 7s ago
+   Main PID: 1373453 (monitor_openvpn)
+      Tasks: 2 (limit: 9374)
+     Memory: 1.1M
+     CGroup: /system.slice/monitor_openvpn.service
+             ├─1373453 /bin/bash /home/docker-app/openvpn/monitor_openvpn.sh
+             └─1373484 sleep 10
+```
+
 
 ## 三、客户端使用
 

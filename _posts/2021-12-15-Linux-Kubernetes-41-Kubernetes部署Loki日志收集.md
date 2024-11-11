@@ -40,7 +40,7 @@ Querier 收到HTTP查询请求，并将请求发送至Ingester 用以获取内�
 
 ### 1. 准备storageclass做持久化存储
 
-过程略过，可以参考之前的nfs-provisioner，这篇文章有教你如何做持久化存储：https://blog.linuxtian.top/2021/08Linux-Kubernetes-34-交付EFK到K8S/
+过程略过，可以参考之前的nfs-provisioner，这篇文章有教你如何做持久化存储：http://blog.tianxiang.love/2021/08Linux-Kubernetes-34-交付EFK到K8S/
 
 ### 2. 准备Rbac.yaml
 

@@ -180,10 +180,10 @@ Repeat User Password:NEUTRON_PASS
 
 自助服务网络通常使用覆盖网络。诸如VXLAN之类的覆盖网络协议包括其他标头，这些标头会增加开销并减少可用于有效负载或用户数据的空间。在不了解虚拟网络基础结构的情况下，实例尝试使用默认的1500字节以太网最大传输单元（MTU）发送数据包。网络服务会通过DHCP自动为实例提供正确的MTU值。但是，某些云映像不使用DHCP或忽略DHCP MTU选项，而是需要使用元数据或脚本进行配置。
 
-选择以下网络选项之一来配置特定于它的服务。之后，返回此处并继续 配置配置[元数据代理](http://blog.linuxtian.top/2020/12/OpenStack-Train%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2-23-Neutron%E6%8E%A7%E5%88%B6%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AE/)
+选择以下网络选项之一来配置特定于它的服务。之后，返回此处并继续 配置配置[元数据代理](http://blog.tianxiang.love/2020/12/OpenStack-Train%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2-23-Neutron%E6%8E%A7%E5%88%B6%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AE/)
 
-- [网络选项1：公共网络](http://blog.linuxtian.top/2020/12/OpenStack-Rocky%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2-21-%E5%85%AC%E5%85%B1%E7%BD%91%E7%BB%9C/)
-- [网络选项2：私有网络](http://blog.linuxtian.top/2020/12/OpenStack-Rocky%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2-22-%E7%A7%81%E6%9C%89%E7%BD%91%E7%BB%9C/)
+- [网络选项1：公共网络](http://blog.tianxiang.love/2020/12/OpenStack-Rocky%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2-21-%E5%85%AC%E5%85%B1%E7%BD%91%E7%BB%9C/)
+- [网络选项2：私有网络](http://blog.tianxiang.love/2020/12/OpenStack-Rocky%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2-22-%E7%A7%81%E6%9C%89%E7%BD%91%E7%BB%9C/)
 
 ### 7.配置元数据代理
 

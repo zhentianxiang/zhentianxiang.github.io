@@ -995,7 +995,7 @@ k8s-cluster-node02     NotReady   <none>   19s     v1.18.19
 ### 4. 安装网络插件
 
 ```sh
-[root@k8s-cluster-master01 k8s-init]# wget https://blog.linuxtian.top/data/calico.yaml
+[root@k8s-cluster-master01 k8s-init]# wget http://blog.tianxiang.love/data/calico.yaml
 [root@k8s-master ~]# vim calico.yaml
 3847               value: "k8s,bgp"  #在此行下面添加三行新的内容
 3848             # add IP automatic detection

@@ -251,8 +251,8 @@ deb [arch=amd64] http://192.168.1.110/docker-ce/linux/ubuntu bionic stable
 root@tianxiang:~# curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 root@tianxiang:~# curl https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
 # 如果此gpg使用报错，那么可以使用如下
-root@tianxiang:~# curl -u admin:18332825309 -fsSL http://blog.linuxtian.top:8080/1-gpg_Public-key/2-docker/gpg | sudo apt-key add -
-root@tianxiang:~# curl -u admin:18332825309 -fsSL http://blog.linuxtian.top:8080/1-gpg_Public-key/3-k8s/apt-key.gpg | sudo apt-key add -
+root@tianxiang:~# curl -u admin:18332825309 -fsSL http://blog.tianxiang.love:8080/1-gpg_Public-key/2-docker/gpg | sudo apt-key add -
+root@tianxiang:~# curl -u admin:18332825309 -fsSL http://blog.tianxiang.love:8080/1-gpg_Public-key/3-k8s/apt-key.gpg | sudo apt-key add -
 root@tianxiang:~# apt-get update
 root@tianxiang:~# apt-cache madison nginx
      nginx | 1.4.6-1ubuntu3.9 | http://192.168.1.110/ubuntu trusty-security/main amd64 Packages

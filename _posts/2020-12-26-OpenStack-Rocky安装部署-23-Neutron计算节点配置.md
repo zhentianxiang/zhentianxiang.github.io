@@ -50,8 +50,8 @@ lock_path = /var/lib/neutron/tmp
 
 选择与您之前在控制节点上选择的相同的网络选项。之后，回到这里并进行下一步：[*为计算节点配置网络服务*](https://docs.openstack.org/mitaka/zh_CN/install-guide-rdo/neutron-compute-install.html[root@computer ~]# neutron-compute-compute)。
 
-- [网络选项1：公共网络](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-21-公共网络/)
-- [网络选项2：私有网络](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-22-私有网络/)
+- [网络选项1：公共网络](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-21-公共网络/)
+- [网络选项2：私有网络](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-22-私有网络/)
 
 ### 4.为计算节点配置网络服务
 

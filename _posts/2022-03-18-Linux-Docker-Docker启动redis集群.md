@@ -245,3 +245,159 @@ sentinel_simulate_failure_flags:0
 master0:name=mymaster,status=ok,address=192.168.20.109:6380,slaves=1,sentinels=3
 127.0.0.1:26381>  
 ```
+
+### 4. redis 官方集群 compose 文件
+
+#### 1. yml 文件
+
+获取文件链接：https://github.com/bitnami/containers/blob/main/bitnami/redis-cluster/docker-compose.yml
+
+```yaml
+# 麒麟安装docker版本也必须为 20.10.0-20.10.9
+# 麒麟系统中部署7.2版本的需要添加：privileged: true
+# docker-compose v2.26.1 版本的可以关闭 version
+
+version: '3'
+services:
+  redis-node-0:
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-0:/bitnami/redis/data
+    environment:
+      - 'REDIS_PASSWORD=bitnami'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5'
+    ports:
+      - "6379:6379"
+
+  redis-node-1:
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-1:/bitnami/redis/data
+    environment:
+      - 'REDIS_PASSWORD=bitnami'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5'
+    ports:
+      - "6380:6379"
+
+  redis-node-2:
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-2:/bitnami/redis/data
+    environment:
+      - 'REDIS_PASSWORD=bitnami'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5'
+    ports:
+      - "6381:6379"
+
+  redis-node-3:
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-3:/bitnami/redis/data
+    environment:
+      - 'REDIS_PASSWORD=bitnami'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5'
+    ports:
+      - "6382:6379"
+
+  redis-node-4:
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-4:/bitnami/redis/data
+    environment:
+      - 'REDIS_PASSWORD=bitnami'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5'
+    ports:
+      - "6383:6379"
+
+  redis-node-5:
+    image: docker.io/bitnami/redis-cluster:7.2
+    volumes:
+      - redis-cluster_data-5:/bitnami/redis/data
+    depends_on:
+      - redis-node-0
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+    environment:
+      - 'REDIS_PASSWORD=bitnami'
+      - 'REDISCLI_AUTH=bitnami'
+      - 'REDIS_CLUSTER_REPLICAS=1'
+      - 'REDIS_NODES=redis-node-0 redis-node-1 redis-node-2 redis-node-3 redis-node-4 redis-node-5'
+      - 'REDIS_CLUSTER_CREATOR=yes'
+    ports:
+      - "6384:6379"
+
+volumes:
+  redis-cluster_data-0:
+    driver: local
+  redis-cluster_data-1:
+    driver: local
+  redis-cluster_data-2:
+    driver: local
+  redis-cluster_data-3:
+    driver: local
+  redis-cluster_data-4:
+    driver: local
+  redis-cluster_data-5:
+    driver: local
+```
+
+#### 2. 启动
+
+```sh
+$ docker-compose up -d
+[+] Running 6/6
+ ✔ Container redis-cluster-redis-node-1-1  Started                                                                                                               4.1s 
+ ✔ Container redis-cluster-redis-node-3-1  Started                                                                                                               5.1s 
+ ✔ Container redis-cluster-redis-node-4-1  Started                                                                                                               3.8s 
+ ✔ Container redis-cluster-redis-node-0-1  Started                                                                                                               5.0s 
+ ✔ Container redis-cluster-redis-node-2-1  Started                                                                                                               4.9s 
+ ✔ Container redis-cluster-redis-node-5-1  Started                                                                                                              11.8s
+$ docker-compose ps
+NAME                           IMAGE                                 COMMAND                  SERVICE        CREATED          STATUS          PORTS
+redis-cluster-redis-node-0-1   docker.io/bitnami/redis-cluster:7.2   "/opt/bitnami/script…"   redis-node-0   10 minutes ago   Up 10 minutes   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp
+redis-cluster-redis-node-1-1   docker.io/bitnami/redis-cluster:7.2   "/opt/bitnami/script…"   redis-node-1   10 minutes ago   Up 10 minutes   0.0.0.0:6380->6379/tcp, :::6380->6379/tcp
+redis-cluster-redis-node-2-1   docker.io/bitnami/redis-cluster:7.2   "/opt/bitnami/script…"   redis-node-2   10 minutes ago   Up 10 minutes   0.0.0.0:6381->6379/tcp, :::6381->6379/tcp
+redis-cluster-redis-node-3-1   docker.io/bitnami/redis-cluster:7.2   "/opt/bitnami/script…"   redis-node-3   10 minutes ago   Up 10 minutes   0.0.0.0:6382->6379/tcp, :::6382->6379/tcp
+redis-cluster-redis-node-4-1   docker.io/bitnami/redis-cluster:7.2   "/opt/bitnami/script…"   redis-node-4   10 minutes ago   Up 10 minutes   0.0.0.0:6383->6379/tcp, :::6383->6379/tcp
+redis-cluster-redis-node-5-1   docker.io/bitnami/redis-cluster:7.2   "/opt/bitnami/script…"   redis-node-5   10 minutes ago   Up 10 minutes   0.0.0.0:6384->6379/tcp, :::6384->6379/tcp
+```
+
+#### 3. 验证功能性
+
+```sh
+$ docker exec -it redis-cluster-redis-node-0-1 redis-cli -c -a bitnami cluster info 
+cluster_state:ok
+cluster_slots_assigned:16384
+cluster_slots_ok:16384
+cluster_slots_pfail:0
+cluster_slots_fail:0
+cluster_known_nodes:6
+cluster_size:3
+cluster_current_epoch:6
+cluster_my_epoch:1
+cluster_stats_messages_ping_sent:808
+cluster_stats_messages_pong_sent:840
+cluster_stats_messages_sent:1648
+cluster_stats_messages_ping_received:840
+cluster_stats_messages_pong_received:808
+cluster_stats_messages_received:1648
+total_cluster_links_buffer_limit_exceeded:0
+$ docker exec -it redis-cluster-redis-node-0-1 redis-cli -c -a bitnami cluster nodes
+586ceef1f3c10402caa6c44f74ea7dae2d5e69fa 172.21.0.4:6379@16379 myself,master - 0 1715652372000 1 connected 0-5460
+1c28b8ea52764a60a3e21604de60e5f88fa5b8cf 172.21.0.7:6379@16379 slave aceb415adf27059a4d4a09635be115174d76eb84 0 1715652373000 2 connected
+d654b794102b62107fd35079d19447d0bb60cc16 172.21.0.5:6379@16379 master - 0 1715652374870 3 connected 10923-16383
+2fb2571319a930fbb2538168ce828cd894b32028 172.21.0.3:6379@16379 slave d654b794102b62107fd35079d19447d0bb60cc16 0 1715652370000 3 connected
+3b63907f36672ddc87dc43ae5065ce2000ccaa1b 172.21.0.2:6379@16379 slave 586ceef1f3c10402caa6c44f74ea7dae2d5e69fa 0 1715652373864 1 connected
+aceb415adf27059a4d4a09635be115174d76eb84 172.21.0.6:6379@16379 master - 0 1715652372000 2 connected 5461-10922
+
+# 写入测试
+$ docker exec -it redis-cluster-redis-node-0-1 redis-cli -c -a bitnami set test "hello world"
+$ docker exec -it redis-cluster-redis-node-0-1 redis-cli -c -a bitnami get test
+Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+"hello world"
+$ docker exec -it redis-cluster-redis-node-5-1 redis-cli -c -a bitnami get test
+Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+"hello world"
+```

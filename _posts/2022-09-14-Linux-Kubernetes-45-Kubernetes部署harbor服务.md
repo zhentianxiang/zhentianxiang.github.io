@@ -269,7 +269,7 @@ $ kubectl create secret tls harbor-notary -n harbor  --cert=tls.crt --key=tls.ke
 
 #### 1.4 准备 harbor chart 文件
 
-直接白嫖：https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/values.yaml
+直接白嫖：http://blog.tianxiang.love/data/3-harbor%E7%9B%B8%E5%85%B3/values.yaml
 
 ```sh
 $ vim values.yaml
@@ -909,7 +909,7 @@ harbor 修改外部 redis 即可
 官方文档: https://access.crunchydata.com/documentation/postgres-operator/5.0.0/tutorial/create-cluster/
 
 包不太好找了我直接提供: 
-- https://blog.linuxtian.top/data/3-harbor%E7%9B%B8%E5%85%B3/harbor/postgres-ha.zip
+- http://blog.tianxiang.love/data/3-harbor%E7%9B%B8%E5%85%B3/harbor/postgres-ha.zip
 
 ```sh
 $ unzip postgres-ha.zip

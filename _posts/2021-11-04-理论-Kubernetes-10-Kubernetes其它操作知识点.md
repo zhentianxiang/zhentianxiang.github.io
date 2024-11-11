@@ -32,7 +32,7 @@ tags: 理论-Kubernetes
 
 如：利用nfs来作为后端存储
 
-可以参考这一章内容 https://blog.linuxtian.top/2021/08/Linux-Kubernetes-34-交付EFK到K8S
+可以参考这一章内容 http://blog.tianxiang.love/2021/08/Linux-Kubernetes-34-交付EFK到K8S
 
 ```sh
 [root@k8s-master ~]# vim /etc/kubernetes/manifests/kube-apiserver.yaml

@@ -193,7 +193,7 @@ f255dcf446d5        postgres:9.6.21     "docker-entrypoint.s…"   43 seconds ag
 be959d4f9b2d        postgres:9.6.21     "docker-entrypoint.s…"   43 seconds ago      Up 23 seconds       0.0.0.0:20012->5432/tcp   harbor-notarysigner
 ```
 
-当然，针对上面提到的外置的 psql 方法，也可以使用高可用集群模式 psql 集群，可以参考[Linux-postgres-01-高可用集群部署](http://blog.linuxtian.top:4000/2022/04/Linux-postgres-01-%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2/)
+当然，针对上面提到的外置的 psql 方法，也可以使用高可用集群模式 psql 集群，可以参考[Linux-postgres-01-高可用集群部署](http://blog.tianxiang.love:4000/2022/04/Linux-postgres-01-%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E9%83%A8%E7%BD%B2/)
 
 
 同样 redis 也可以使用高可用的哨兵模式
@@ -352,7 +352,7 @@ UUID=f3ee650e-adaf-47d0-8d16-4c8240b28e54 /boot                   xfs     defaul
 # 生成一个证书签名, 设置访问域名为tianxiang
 [root@harbor01 cert]# openssl req -newkey rsa:4096 -nodes -sha256 -keyout server.key -out server.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor-registry.com"
 # 服务端证书生成时，因为正书中需要有 login 的地址信息，所以需要把每个 harbor 节点的地址添加进去，包括 VIP
-[root@harbor01 cert]# echo subjectAltName = DNS:*,IP:192.168.20.51,IP:192.168.20.52,IP:192.168.20.53,IP:192.168.20.60,IP:127.0.0.1 > extfile.cnf
+[root@harbor01 cert]# echo subjectAltName = IP:192.168.20.51, IP:192.168.20.52, IP:192.168.20.53, IP:127.0.0.1, DNS:example.com, DNS:harbor.demo.com > extfile.cnf
 # 生成主机的证书
 [root@harbor01 cert]# openssl x509 -req -days 3650 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile extfile.cnf -out server.crt
 # 查看服务证书内容是否有设置的服务端IP地址

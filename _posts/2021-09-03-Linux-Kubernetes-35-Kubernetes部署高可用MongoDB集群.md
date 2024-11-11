@@ -34,7 +34,7 @@ $ kubectl create ns mongo
 
 在这一篇中有些pvc的部署过程，可以参考一下
 
-[Linux-Kubernetes-34-交付EFK到K8S](https://blog.linuxtian.top/2021/08/Linux-Kubernetes-34-%E4%BA%A4%E4%BB%98EFK%E5%88%B0K8S/)
+[Linux-Kubernetes-34-交付EFK到K8S](http://blog.tianxiang.love/2021/08/Linux-Kubernetes-34-%E4%BA%A4%E4%BB%98EFK%E5%88%B0K8S/)
 
 ```sh
 $ vim mongo-clutser-sc.yaml

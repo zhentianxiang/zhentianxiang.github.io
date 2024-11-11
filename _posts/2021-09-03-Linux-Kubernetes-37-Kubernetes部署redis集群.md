@@ -52,7 +52,7 @@ https://github.com/zuxqoj/kubernetes-redis-cluster
 
 这里就不跟大家细说了，可以参考前面的文章来操作
 
-[Linux-Kubernetes-34-交付EFK到K8S](https://blog.linuxtian.top/2021/08/Linux-Kubernetes-34-%E4%BA%A4%E4%BB%98EFK%E5%88%B0K8S/)
+[Linux-Kubernetes-34-交付EFK到K8S](http://blog.tianxiang.love/2021/08/Linux-Kubernetes-34-%E4%BA%A4%E4%BB%98EFK%E5%88%B0K8S/)
 
 ### 4.2 创建StorageClass存储
 

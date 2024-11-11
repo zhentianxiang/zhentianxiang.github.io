@@ -243,8 +243,8 @@ kubectl apply -f https://github.com/kubesphere/ks-installer/releases/download/v3
 如果文件拉去不下来，可以使用我自己提前准备好的，根据情况自己修改是否要开启的配置
 
 ```sh
-wget https://blog.linuxtian.top/data/kubesphere-3.2.0/cluster-configuration.yaml
-wget https://blog.linuxtian.top/data/kubesphere-3.2.0/kubesphere-installer.yaml
+wget http://blog.tianxiang.love/data/kubesphere-3.2.0/cluster-configuration.yaml
+wget http://blog.tianxiang.love/data/kubesphere-3.2.0/kubesphere-installer.yaml
 ```
 
 查看安装日志

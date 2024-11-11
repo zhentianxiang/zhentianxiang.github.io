@@ -190,6 +190,6 @@ interface_driver = linuxbridge
 dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq
 enable_isolated_metadata = true
 ```
-返回[网络Neutron控制节点](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-20-Neutron控制节点配置/)继续部署
+返回[网络Neutron控制节点](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-20-Neutron控制节点配置/)继续部署
 
-返回[网络Neutron计算节点](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-23-Neutron计算节点配置/)继续部署
+返回[网络Neutron计算节点](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-23-Neutron计算节点配置/)继续部署

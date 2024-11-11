@@ -79,7 +79,7 @@ tags: Linux-Docker
 [root@tianxiang ~]# tar xf  harbor-offline-installer-v2.1.5.tgz
 [root@tianxiang ~]# cp /home/k8s-data/harbor/harbor.yml.tmpl /home/k8s-data/harbor/harbor.yml
 # 修改harbor仓库的访问IP地址或者域名
-[root@tianxiang ~]# sed -i 's/hostname: reg.mydomain.com/hostname: 'blog.linuxtian.top'/g' /home/k8s-data/harbor/harbor.yml
+[root@tianxiang ~]# sed -i 's/hostname: reg.mydomain.com/hostname: 'blog.tianxiang.love'/g' /home/k8s-data/harbor/harbor.yml
 [root@tianxiang ~]# sed -i 's/port: 80/port: 180/g' /home/k8s-data/harbor/harbor.yml
 [root@tianxiang ~]# sed -i 's/https:/#https:/g' /home/k8s-data/harbor/harbor.yml
 [root@tianxiang ~]# sed -i 's/port: 443/#port: 443/g' /home/k8s-data/harbor/harbor.yml
@@ -253,7 +253,7 @@ Loaded image: zhentianxiang/nginx:1.21.4
 [root@tianxiang ~]# cat /etc/docker/daemon.json
 {
   "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io","blog.linuxtian.top:180"],
+  "insecure-registries": ["registry.access.redhat.com","quay.io","blog.tianxiang.love:180"],
   "registry-mirrors": ["https://q2gr04ke.mirror.aliyuncs.com"],
   "exec-opts": ["native.cgroupdriver=systemd"],
   "live-restore": true
@@ -263,7 +263,7 @@ Loaded image: zhentianxiang/nginx:1.21.4
 ```
 登录到仓库
 ```#!/bin/sh
-[root@tianxiang ~]# docker login blog.linuxtian.top:180
+[root@tianxiang ~]# docker login blog.tianxiang.love:180
 Username: admin
 Password:
 WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
@@ -276,9 +276,9 @@ Login Succeeded
 修改镜像tag
 
 ```#!/bin/sh
-[root@tianxiang ~]# docker tag nginx:1.21.4 blog.linuxtian.top:180/library/nginx:1.21.4
-[root@tianxiang ~]# docker push blog.linuxtian.top:180/library/nginx
-The push refers to repository [blog.linuxtian.top:180/library/nginx]
+[root@tianxiang ~]# docker tag nginx:1.21.4 blog.tianxiang.love:180/library/nginx:1.21.4
+[root@tianxiang ~]# docker push blog.tianxiang.love:180/library/nginx
+The push refers to repository [blog.tianxiang.love:180/library/nginx]
 2bed47a66c07: Pushed
 82caad489ad7: Pushed
 d3e1dca44e82: Pushed
@@ -314,7 +314,7 @@ c9aa5a5260a7        goharbor/harbor-registryctl:v2.1.5   "/home/harbor/start.…
 启动、停止、删除容器
 
 ```#!/bin/sh
-[root@tianxiang ~]# docker run -itd --name nginx-test blog.linuxtian.top:180/library/nginx:1.21.4
+[root@tianxiang ~]# docker run -itd --name nginx-test blog.tianxiang.love:180/library/nginx:1.21.4
 4c086373573b194913f3157a8cd33c023459939d9611cb410e3c5e345cac58a8
 ```
 
@@ -339,7 +339,7 @@ c9aa5a5260a7        goharbor/harbor-registryctl:v2.1.5   "/home/harbor/start.…
 
 ```#!/bin/sh
 [root@tianxiang ~]# docker ps |grep nginx
-4c086373573b        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   2 minutes ago       Up 2 minutes              80/tcp                      nginx-test
+4c086373573b        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   2 minutes ago       Up 2 minutes              80/tcp                      nginx-test
 # 这里的bash充当一个命令，就是进入sh界面的意思，
 [root@tianxiang ~]# docker exec -it nginx-test bash
 # exit 可以退出容器
@@ -382,11 +382,11 @@ http {
 我们再试试映射一下端口
 
 ```#!/bin/sh
-[root@tianxiang ~]# docker run -dit --name nginx-test-01 -p 30001:80 blog.linuxtian.top:180/library/nginx:1.21.4
+[root@tianxiang ~]# docker run -dit --name nginx-test-01 -p 30001:80 blog.tianxiang.love:180/library/nginx:1.21.4
 05134529c90cc362fc103fb8857a3db491fd0f1841c239746bc7139bc75238da
 [root@tianxiang ~]# docker ps -l
 CONTAINER ID        IMAGE                                         COMMAND                  CREATED             STATUS              PORTS                   NAMES
-05134529c90c        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   3 seconds ago       Up 2 seconds        0.0.0.0:30001->80/tcp   nginx-test-01
+05134529c90c        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   3 seconds ago       Up 2 seconds        0.0.0.0:30001->80/tcp   nginx-test-01
 [root@tianxiang ~]# netstat -lntp |grep 30001
 tcp6       0      0 :::30001                :::*                    LISTEN      6254/docker-proxy
 ```
@@ -424,7 +424,7 @@ Commercial support is available at
 ```#!/bin/sh
 [root@tianxiang ~]# mkdir test
 [root@tianxiang ~]# touch test/test.txt
-[root@tianxiang ~]# docker run -dit --name nginx-test-02 -p 30002:80 -v /root/test/test.txt:/home/test.txt blog.linuxtian.top:180/library/nginx:1.21.4
+[root@tianxiang ~]# docker run -dit --name nginx-test-02 -p 30002:80 -v /root/test/test.txt:/home/test.txt blog.tianxiang.love:180/library/nginx:1.21.4
 2875e75fa0fbb42c8a1b5ec8cbfc6dba6177a3b872af6551e2220d9fe95936e2
 [root@tianxiang ~]# docker exec -it nginx-test-02 ls /home
 test.txt
@@ -434,18 +434,18 @@ test.txt
 
 ```#!/bin/sh
 [root@tianxiang ~]# docker ps |grep nginx-test
-2875e75fa0fb        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   About a minute ago   Up About a minute         0.0.0.0:30002->80/tcp       nginx-test-02
-05134529c90c        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   7 minutes ago        Up 7 minutes              0.0.0.0:30001->80/tcp       nginx-test-01
-4c086373573b        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   13 minutes ago       Up 13 minutes             80/tcp                      nginx-test
+2875e75fa0fb        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   About a minute ago   Up About a minute         0.0.0.0:30002->80/tcp       nginx-test-02
+05134529c90c        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   7 minutes ago        Up 7 minutes              0.0.0.0:30001->80/tcp       nginx-test-01
+4c086373573b        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   13 minutes ago       Up 13 minutes             80/tcp                      nginx-test
 [root@tianxiang ~]# docker stop nginx-test
 nginx-test
 [root@tianxiang ~]# docker ps |grep nginx-test
-2875e75fa0fb        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   About a minute ago   Up About a minute         0.0.0.0:30002->80/tcp       nginx-test-02
-05134529c90c        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   7 minutes ago        Up 7 minutes              0.0.0.0:30001->80/tcp       nginx-test-01
+2875e75fa0fb        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   About a minute ago   Up About a minute         0.0.0.0:30002->80/tcp       nginx-test-02
+05134529c90c        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   7 minutes ago        Up 7 minutes              0.0.0.0:30001->80/tcp       nginx-test-01
 [root@tianxiang ~]# docker ps -a |grep nginx-test
-2875e75fa0fb        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   2 minutes ago       Up 2 minutes                0.0.0.0:30002->80/tcp       nginx-test-02
-05134529c90c        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   7 minutes ago       Up 7 minutes                0.0.0.0:30001->80/tcp       nginx-test-01
-4c086373573b        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   13 minutes ago      Exited (0) 16 seconds ago                               nginx-test
+2875e75fa0fb        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   2 minutes ago       Up 2 minutes                0.0.0.0:30002->80/tcp       nginx-test-02
+05134529c90c        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   7 minutes ago       Up 7 minutes                0.0.0.0:30001->80/tcp       nginx-test-01
+4c086373573b        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   13 minutes ago      Exited (0) 16 seconds ago                               nginx-test
 ```
 启动容器
 
@@ -453,9 +453,9 @@ nginx-test
 [root@tianxiang ~]# docker start nginx-test
 nginx-test
 [root@tianxiang ~]# docker ps |grep nginx-test
-2875e75fa0fb        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   2 minutes ago       Up 2 minutes              0.0.0.0:30002->80/tcp       nginx-test-02
-05134529c90c        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   8 minutes ago       Up 8 minutes              0.0.0.0:30001->80/tcp       nginx-test-01
-4c086373573b        blog.linuxtian.top:180/library/nginx:1.21.4   "/docker-entrypoint.…"   14 minutes ago      Up 2 seconds              80/tcp                      nginx-test
+2875e75fa0fb        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   2 minutes ago       Up 2 minutes              0.0.0.0:30002->80/tcp       nginx-test-02
+05134529c90c        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   8 minutes ago       Up 8 minutes              0.0.0.0:30001->80/tcp       nginx-test-01
+4c086373573b        blog.tianxiang.love:180/library/nginx:1.21.4   "/docker-entrypoint.…"   14 minutes ago      Up 2 seconds              80/tcp                      nginx-test
 ```
 
 删除容器，删除容器山需要先stop，如果不stop，需要-f强制删除
@@ -675,7 +675,7 @@ rtt min/avg/max/mdev = 0.085/0.101/0.114/0.012 ms
 
 ```#!/bin/sh
 # 把nginx-test-03 连接到nginx-test-02
-[root@tianxiang ~]# docker run -dit --name nginx-test-03 --link nginx-test-02 blog.linuxtian.top:180/library/nginx:1.21.4
+[root@tianxiang ~]# docker run -dit --name nginx-test-03 --link nginx-test-02 blog.tianxiang.love:180/library/nginx:1.21.4
 3bcac68525d37918ea7d7b0dd53495729731e58017e2751901ad7781fc26d219
 [root@tianxiang ~]# docker exec -it nginx-test-03 ping nginx-test-02
 PING nginx-test-02 (172.17.0.4) 56(84) bytes of data.
@@ -766,9 +766,9 @@ d70b1971eb84        mynet               bridge              local
 使用自定义网络启动两个容器，测试连通性
 
 ```#!/bin/sh
-[root@tianxiang ~]# docker run -dit --name nginx-test-04 --network mynet blog.linuxtian.top:180/library/nginx:1.21.4
+[root@tianxiang ~]# docker run -dit --name nginx-test-04 --network mynet blog.tianxiang.love:180/library/nginx:1.21.4
 9ee69ced981d0a7347d733b46ab73e4d61893831e7fadfd10404d24990c38f16
-[root@tianxiang ~]# docker run -dit --name nginx-test-05 --network mynet blog.linuxtian.top:180/library/nginx:1.21.4
+[root@tianxiang ~]# docker run -dit --name nginx-test-05 --network mynet blog.tianxiang.love:180/library/nginx:1.21.4
 5a4d0317a3ebf48c5a171488c436c3c3cff66e1fa873a9de190039ca224a09c3
 [root@tianxiang ~]# docker exec -it nginx-test-04 bash
 root@9ee69ced981d:/# ip a
@@ -852,4 +852,21 @@ nginx-test-01
 以容器ID删除就是
 ```#!/bin/sh
 [root@tianxiang ~]# docker ps -a |grep nginx-test |awk '{print $1}' |xargs -n1 docker rm -f
+```
+
+### 6. 其他补充命令
+
+#### 6.1 nsenter
+
+很多时候容器中有很多的命令不齐全，比如 ping telnet 等
+
+虽然有些时候可以通过 apt 或者其他命令给安装好，但是，有些时候容器运行的用户不是 root 用户，没有权限执行 apt 进行安装
+
+此时我们就可以同 nsenter 命令来进入容器的 namespace 以便我们进行操作
+
+docker inspect -f '{{.State.Pid}}' 容器名称
+
+```
+$ docker inspect -f '{{.State.Pid}}' 容器名称
+$ nsenter -t 15173 -m -u -i -n -p
 ```

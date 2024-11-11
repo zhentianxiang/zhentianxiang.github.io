@@ -1640,11 +1640,11 @@ Option RGW_API_ACCESS_KEY updated
 
 ```#!/bin/sh
 [root@k8s-cluster-master01 ~]# kubectl create ns ingress-traefik
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/traefike/traefik-crd.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/traefike/traefik-rbac.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/traefike/traefik-config.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/traefike/traefik-ds.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/traefike/traefik-ingress.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/traefike/traefik-crd.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/traefike/traefik-rbac.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/traefike/traefik-config.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/traefike/traefik-ds.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/traefike/traefik-ingress.yaml
 ```
 
 ### 2. 交付 grafana
@@ -1652,21 +1652,21 @@ Option RGW_API_ACCESS_KEY updated
 我这里的pvc用的上面动态nfs的pvc
 ```#!/bin/sh
 [root@k8s-cluster-master01 ~]# kubectl create ns grafana
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/grafana/PVC.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/grafana/dp.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/grafana/svc.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/grafana/rbac.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/grafana/ingress.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/grafana/PVC.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/grafana/dp.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/grafana/svc.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/grafana/rbac.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/grafana/ingress.yaml
 ```
 
 ### 3. 交付 prometheus
 ```#!/bin/sh
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/prometheus/prometheus-svc.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/prometheus/prometheus-rbac.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/prometheus/prometheus-dep.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/prometheus/prometheus-cfg.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/prometheus/prometheus-ingress.yaml
-[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.linuxtian.top:8080/5-yaml/prometheus/node-exporter.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/prometheus/prometheus-svc.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/prometheus/prometheus-rbac.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/prometheus/prometheus-dep.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/prometheus/prometheus-cfg.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/prometheus/prometheus-ingress.yaml
+[root@k8s-cluster-master01 ~]# kubectl apply -f http://blog.tianxiang.love:8080/5-yaml/prometheus/node-exporter.yaml
 
 ![](/images/posts/Linux-Kubernetes/k8s_Persistent/6.png)
 ![](/images/posts/Linux-Kubernetes/k8s_Persistent/7.png)

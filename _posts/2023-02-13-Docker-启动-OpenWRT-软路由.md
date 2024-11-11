@@ -241,7 +241,7 @@ root@OpenWrt:/tmp/upload/frp_0.46.1_linux_amd64# 2023/02/13 13:31:07 [I] [servic
 
 ```sh
 [root@localhost ~]# ssh -p 7022 root@x.x.x.x
-root@blog.linuxtian.tops password:
+root@blog.tianxiang.loves password:
 
 
 BusyBox v1.31.1 () built-in shell (ash)

@@ -119,7 +119,7 @@ caf02a27fd69        redis:3             "docker-entrypoint.s…"   7 hours ago  
 这里可以不用再单独启动harbor了，我这里直接贴一个链接拿去用即可
 
 ```sh
-[root@storage-nfs ~]# wget http://blog.linuxtian.top:8080/6-harbor/releases/registry/registry.dump
+[root@storage-nfs ~]# wget http://blog.tianxiang.love:8080/6-harbor/releases/registry/registry.dump
 [root@storage-nfs ~]# docker cp registry.dump mysql-server:/registry.dump
 [root@storage-nfs ~]# docker exec -it mysql-server bash
 root@mysql-server:/# mysql -uroot -p

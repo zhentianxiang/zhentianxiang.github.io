@@ -83,11 +83,11 @@ PING computer (10.0.0.11) 56(84) bytes of data.
 
 更多关于系统要求的信息，查看 [OpenStack Operations Guide](http://docs.openstack.org/ops/).
 
-- [安全](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-03-安全/)
-- [主机网络](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-04-主机网络/)
-- [网络时间协议(NTP)](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-05-网络时间-NTP/)
-- [OpenStack包](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-06-openstack安装包/)
-- [SQL数据库](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-07-SQL数据库/)
-- [NoSQL 数据库](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-08-NoSQL数据库/)
-- [消息队列](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-09-RabbitMQ消息队列/)
-- [Memcached](http://blog.linuxtian.top/2020/12/OpenStack-Rocky安装部署-10-Memcached缓存/)
+- [安全](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-03-安全/)
+- [主机网络](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-04-主机网络/)
+- [网络时间协议(NTP)](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-05-网络时间-NTP/)
+- [OpenStack包](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-06-openstack安装包/)
+- [SQL数据库](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-07-SQL数据库/)
+- [NoSQL 数据库](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-08-NoSQL数据库/)
+- [消息队列](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-09-RabbitMQ消息队列/)
+- [Memcached](http://blog.tianxiang.love/2020/12/OpenStack-Rocky安装部署-10-Memcached缓存/)
