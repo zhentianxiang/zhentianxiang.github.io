@@ -194,6 +194,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: nfs-provisioner-storage
+  namespace: kube-system
   #annotations:
     #storageclass.beta.kubernetes.io/is-default-class: "true"  #这个是让这个storage充当默认，这里不需要就注释掉
 provisioner: example.com/nfs
@@ -206,6 +207,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: nfs-provisioner-runner
+  namespace: kube-system
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -218,7 +220,7 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["events"]
-    verbs: ["create", "update", "patch"]
+    verbs: ["list", "create", "update", "patch"]
   - apiGroups: [""]
     resources: ["services", "endpoints"]
     verbs: ["get"]
@@ -231,10 +233,11 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: run-nfs-provisioner
+  namespace: kube-system
 subjects:
   - kind: ServiceAccount
     name: nfs-provisioner
-    namespace: default
+    namespace: kube-system
 roleRef:
   kind: ClusterRole
   name: nfs-provisioner-runner
@@ -244,6 +247,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: leader-locking-nfs-provisioner
+  namespace: kube-system
 rules:
   - apiGroups: [""]
     resources: ["endpoints"]
@@ -253,10 +257,11 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: leader-locking-nfs-provisioner
+  namespace: kube-system
 subjects:
   - kind: ServiceAccount
     name: nfs-provisioner
-    namespace: default
+    namespace: kube-system
 roleRef:
   kind: Role
   name: leader-locking-nfs-provisioner
@@ -270,6 +275,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: nfs-provisioner
+  namespace: kube-system
 EOF
 ```
 
@@ -279,6 +285,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: nfs-provisioner
+  namespace: kube-system
 spec:
   selector:
     matchLabels:
@@ -305,15 +312,15 @@ spec:
               value: example.com/nfs
             - name: NFS_SERVER
             # 注意修改地址
-              value: 192.168.1.184
+              value: 172.16.246.152
             - name: NFS_PATH
-              value: /home/nfs_volume
+              value: /data/k8s/pvc_volume/
       volumes:
         - name: nfs-client-root
           nfs:
           # 注意修改地址
-            server: 192.168.1.184
-            path: /home/nfs_volume
+            server: 172.16.246.152
+            path: /data/k8s/pvc_volume/
 EOF
 ```
 再准备一个nginx的服务用来测试动态创建pv

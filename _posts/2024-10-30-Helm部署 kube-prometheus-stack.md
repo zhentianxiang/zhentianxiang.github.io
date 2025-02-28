@@ -326,243 +326,137 @@ kubeDns:
 
 MySQL Exporter是一个开源工具，用于监控MySQL服务器的性能。 它通过收集MySQL服务器的状态信息，并将其以Prometheus可理解的格式导出，使得管理员可以利用Prometheus或其他监控系统进行数据分析和可视化。
 
-```sh
-[root@k8s-master1 mysql-export]# ls
-configmap.yaml  deployment.yaml  service-monitor.yaml  service.yaml
-```
-
-比如我们要监控这两个控制器的 mysql
+首先在 mysql 上面创建一个 exporter 用户，专门用来提供监控来使用，这里我就使用 exporter 用户了
 
 ```sh
-[root@k8s-master1 mysql-export]# kubectl get pods -n meta42  |grep commons-mysql
-commons-mysql-cluster-0                               2/2     Running            0               12d
-commons-mysql-cluster-1                               2/2     Running            0               12d
-[root@k8s-master1 mysql-export]# kubectl get pods -n meta42  |grep common-mysql
-common-mysql-0                                        1/1     Running            133 (54m ago)   12d
+# 创建用户
+CREATE USER 'exporter'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+GRANT ALL PRIVILEGES ON *.* TO 'exporter'@'%' WITH GRANT OPTION;
 ```
+
 
 ```sh
 [root@k8s-master1 mysql-export]# cat deployment.yaml 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysqld-exporter-222
+  namespace: monitoring
+data:
+  .mysqld_exporter.cnf: |
+    [client]
+    user=exporter
+    password=123456
+    host=192.168.233.222
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql-exporter
+  name: mysqld-exporter-222
   namespace: monitoring
+  labels:
+    app: mysqld-exporter  # 统一的标签
 spec:
   replicas: 1
   selector:
     matchLabels:
-      k8s-app: mysql-exporter
-      mysql_instance: "commons-mysql-cluster-0"
+      app: mysqld-exporter
+      instance: mysqld-exporter-222  # 用于区分实例
   template:
     metadata:
       labels:
-        k8s-app: mysql-exporter
-        mysql_instance: "commons-mysql-cluster-0"
+        app: mysqld-exporter  # 统一的标签
+        instance: mysqld-exporter-222  # 唯一标识实例
     spec:
       containers:
-      - image: prom/mysqld-exporter
-        name: mysql-exporter-1
-        args: [ 
-          "--web.listen-address=:9000",
-          "--config.my-cnf=/tmp/my.cnf",
-          "--collect.info_schema.tables",
-          "--collect.info_schema.innodb_tablespaces",
-          "--collect.info_schema.innodb_metrics",
-          "--collect.global_status",
-          "--collect.global_variables",
-          "--collect.slave_status",
-          "--collect.info_schema.processlist",
-          "--collect.perf_schema.tablelocks",
-          "--collect.perf_schema.eventsstatements",
-          "--collect.perf_schema.eventsstatementssum",
-          "--collect.perf_schema.eventswaits",
-          "--collect.auto_increment.columns",
-          "--collect.binlog_size",
-          "--collect.perf_schema.tableiowaits",
-          "--collect.perf_schema.indexiowaits",
-          "--collect.info_schema.userstats",
-          "--collect.info_schema.clientstats",
-          "--collect.info_schema.tablestats",
-          "--collect.info_schema.schemastats",
-          "--collect.perf_schema.file_events",
-          "--collect.perf_schema.file_instances",
-          "--collect.perf_schema.replication_group_member_stats",
-          "--collect.perf_schema.replication_applier_status_by_worker",
-          "--collect.slave_hosts",
-          "--collect.info_schema.innodb_cmp",
-          "--collect.info_schema.innodb_cmpmem",
-          "--collect.info_schema.query_response_time",
-          #"--collect.engine_tokudb_status",
-          "--collect.engine_innodb_status"
-        ]
-        imagePullPolicy: IfNotPresent
+      - name: mysqld-exporter
+        image: prom/mysqld-exporter
+        args:
+        - --config.my-cnf=/etc/.mysqld_exporter.cnf
+        - --collect.info_schema.tables
+        - --collect.info_schema.innodb_tablespaces
+        - --collect.info_schema.innodb_metrics
+        - --collect.global_status
+        - --collect.global_variables
+        - --collect.slave_status
+        - --collect.info_schema.processlist
+        - --collect.perf_schema.tablelocks
+        - --collect.perf_schema.eventsstatements
+        - --collect.perf_schema.eventsstatementssum
+        - --collect.perf_schema.eventswaits
+        - --collect.auto_increment.columns
+        - --collect.binlog_size
+        - --collect.perf_schema.tableiowaits
+        - --collect.perf_schema.indexiowaits
+        - --collect.info_schema.userstats
+        - --collect.info_schema.clientstats
+        - --collect.info_schema.tablestats
+        - --collect.info_schema.schemastats
+        - --collect.perf_schema.file_events
+        - --collect.perf_schema.file_instances
+        - --collect.perf_schema.replication_group_member_stats
+        - --collect.perf_schema.replication_applier_status_by_worker
+        - --collect.slave_hosts
+        - --collect.info_schema.innodb_cmp
+        - --collect.info_schema.innodb_cmpmem
+        - --collect.info_schema.query_response_time
+        - --collect.engine_tokudb_status
+        - --collect.engine_innodb_status
         ports:
-        - name: metrics
-          containerPort: 9000 # 默认端口9104
+        - containerPort: 9104
+          protocol: TCP
         volumeMounts:
-        - name: mysql-config-1
-          mountPath: /tmp/my.cnf
-          subPath: my.cnf
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "3Gi"
-            cpu: 2
-      - image: prom/mysqld-exporter
-        name: mysql-exporter-2
-        args: [ 
-          "--web.listen-address=:9001",
-          "--config.my-cnf=/tmp/my.cnf",
-          "--collect.info_schema.tables",
-          "--collect.info_schema.innodb_tablespaces",
-          "--collect.info_schema.innodb_metrics",
-          "--collect.global_status",
-          "--collect.global_variables",
-          "--collect.slave_status",
-          "--collect.info_schema.processlist",
-          "--collect.perf_schema.tablelocks",
-          "--collect.perf_schema.eventsstatements",
-          "--collect.perf_schema.eventsstatementssum",
-          "--collect.perf_schema.eventswaits",
-          "--collect.auto_increment.columns",
-          "--collect.binlog_size",
-          "--collect.perf_schema.tableiowaits",
-          "--collect.perf_schema.indexiowaits",
-          "--collect.info_schema.userstats",
-          "--collect.info_schema.clientstats",
-          "--collect.info_schema.tablestats",
-          "--collect.info_schema.schemastats",
-          "--collect.perf_schema.file_events",
-          "--collect.perf_schema.file_instances",
-          "--collect.perf_schema.replication_group_member_stats",
-          "--collect.perf_schema.replication_applier_status_by_worker",
-          "--collect.slave_hosts",
-          "--collect.info_schema.innodb_cmp",
-          "--collect.info_schema.innodb_cmpmem",
-          "--collect.info_schema.query_response_time",
-          #"--collect.engine_tokudb_status",
-          "--collect.engine_innodb_status"
-        ]
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: metrics
-          containerPort: 9001  # 修改后的端口号
-        volumeMounts:
-        - name: mysql-config-2
-          mountPath: /tmp/my.cnf
-          subPath: my.cnf
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "3Gi"
-            cpu: 2
+        - name: mysqld-exporter-222
+          mountPath: /etc/.mysqld_exporter.cnf
+          subPath: .mysqld_exporter.cnf
       volumes:
-      - name: mysql-config-1
+      - name: mysqld-exporter-222
         configMap:
-          name: mysql-exporter-1
-      - name: mysql-config-2
-        configMap:
-          name: mysql-exporter-2
-```
-
-```sh
-[root@k8s-master1 mysql-export]# cat service.yaml 
+          name: mysqld-exporter-222
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: mysql-exporter
+  name: mysqld-exporter-222
   namespace: monitoring
   labels:
-    k8s-app: mysql-exporter
+    app: mysqld-exporter  # 统一的标签
+    instance: mysqld-exporter-222  # 唯一标识实例
 spec:
-  ports:
-  - name: mysql-exporter-1
-    port: 9000
-    protocol: TCP
-    targetPort: 9000  # 指向第一个Exporter
-  - name: mysql-exporter-2
-    port: 9001
-    protocol: TCP
-    targetPort: 9001  # 指向第二个Exporter
-  selector:
-    k8s-app: mysql-exporter
   type: ClusterIP
+  ports:
+  - port: 9104
+    protocol: TCP
+    name: http
+  selector:
+    app: mysqld-exporter
+    instance: mysqld-exporter-222  # 匹配 Deployment 的标签
 ```
 
-可为每一个mysql都创建一个prometheus用户，专门用来提供监控来使用，这里我就使用root用户了
-
-```sh
-# 创建用户
-CREATE USER 'prometheus'@'%' IDENTIFIED WITH mysql_native_password BY 'prometheus';
-GRANT ALL PRIVILEGES ON *.* TO 'prometheus'@'%' WITH GRANT OPTION;
-```
-
-```sh
-[root@k8s-master1 mysql-export]# cat configmap.yaml 
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mysql-exporter-1
-  namespace: monitoring
-data:
-  my.cnf: |
-    [client]
-    user=root
-    password=123456
-    host=commons-mysql-cluster.meta42.svc.cluster.local
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mysql-exporter-2
-  namespace: monitoring
-data:
-  my.cnf: |
-    [client]
-    user=root
-    password=123456
-    host=common-mysql.meta42.svc.cluster.local
-```
 
 ```sh
 [root@k8s-master1 mysql-export]# cat service-monitor.yaml 
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: mysql-exporter # 名称
-  namespace: monitoring # 命名空间
+  name: mysqld-exporter
+  namespace: monitoring
   labels:
-    k8s-app: mysql-exporter # 标签
-    release: kube-prometheus-stack # prometheus 通过该标签来加载 Monitor
+    release: kube-prometheus-stack  # 确保与 Prometheus 的配置匹配
 spec:
-  endpoints:
-    - interval: 10s  # 30s获取一次
-      port: mysql-exporter-1 # 这个 port 对应 Service.spec.ports.name
-      relabelings:
-      - action: replace
-        regex: (.*)
-        replacement: $1
-        sourceLabels: [__meta_kubernetes_endpoints_label_mysql] # 这个相当于使用刚刚配置的自定义便签
-        targetLabel: mysql # key值
-      scheme: http # 协议
-    - interval: 10s  # 30s获取一次
-      port: mysql-exporter-2 # 这个 port 对应 Service.spec.ports.name
-      scheme: http # 协议
   selector:
     matchLabels:
-      k8s-app: mysql-exporter # 跟 svc 的 lables 保持一致
+      app: mysqld-exporter  # 匹配 mysqld-exporter 服务
   namespaceSelector:
     matchNames:
-    - monitoring # svc的命名空间
+    - monitoring
+  endpoints:
+  - port: http
+    interval: 15s
+    path: /metrics
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_label_instance]
+      targetLabel: instance  # 将 `instance` 标签值加入 Prometheus 指标
 ```
 
 ```sh
@@ -582,85 +476,95 @@ spec:
   groups:
   - name: mysql-exporter
     rules:
-    - alert: MySQL_is_down
+    - alert: MysqlDown
       expr: mysql_up == 0
-      for: 3m
+      for: 0m
       labels:
         severity: critical
       annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：MySQL database is down. \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
+        summary: MySQL 实例不可用 (实例 {{ $labels.instance }})
+        description: "MySQL 实例在 {{ $labels.instance }} 不可用。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
 
-    - alert: MySQL_慢查询过多
-      expr: delta(mysql_global_status_slow_queries[1m]) > 60
-      for: 1m
-      labels:
-        severity: warning
-      annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：每分钟慢查询:{{ $value }} \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
-
-    - alert: MySQL_当前活跃的连接数过多
-      expr: mysql_global_status_threads_running > 100
-      for: 1m
-      labels:
-        severity: critical
-      annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：当前活跃的连接数:{{ $value }} \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
-
-    - alert: MySQL_当前updating状态的线程过多
-      expr: mysql_info_schema_processlist_threads{state=~"updating"} > 100
-      for: 1m
-      labels:
-        severity: warning
-      annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：当前updating状态的线程:{{ $value }} \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
-
-    - alert: MySQL_High_QPS
-      expr: irate(mysql_global_status_questions[3m]) > 30000
+    - alert: MysqlTooManyConnections(>80%)
+      expr: max_over_time(mysql_global_status_threads_connected[1m]) / mysql_global_variables_max_connections * 100 > 80
       for: 2m
       labels:
         severity: warning
       annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：Mysql QPS:{{ $value | humanize }} \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
+        summary: MySQL 连接数过多 (> 80%) (实例 {{ $labels.instance }})
+        description: "MySQL 实例 {{ $labels.instance }} 的连接数超过 80%。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
 
-    - alert: MySQL_Too_Many_Connections
-      expr: irate(mysql_global_status_threads_connected[3m]) > 1000
+    - alert: MysqlHighPreparedStatementsUtilization(>80%)
+      expr: max_over_time(mysql_global_status_prepared_stmt_count[1m]) / mysql_global_variables_max_prepared_stmt_count * 100 > 80
       for: 2m
       labels:
         severity: warning
       annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：Mysql Connections:{{ $value | humanize }} \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
+        summary: MySQL 预处理语句使用率过高 (> 80%) (实例 {{ $labels.instance }})
+        description: "MySQL 实例 {{ $labels.instance }} 的预处理语句使用率超过 80%。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
 
-    - alert: MySQL_主从IO线程运行状态异常
-      expr: mysql_slave_status_master_server_id > 0 and ON (instance) mysql_slave_status_slave_io_running == 0
-      for: 1m
-      labels:
-        severity: critical
-      annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：MySQL Slave IO thread not running \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
-    
-    - alert: MySQL_主从SQL线程运行状态异常
-      expr: mysql_slave_status_master_server_id > 0 and ON (instance) mysql_slave_status_slave_sql_running == 0
-      for: 1m
-      labels:
-        severity: critical
-      annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：MySQL Slave SQL thread not running \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
-
-    - alert: MySQL_主从复制延迟过高
-      expr: mysql_slave_status_seconds_behind_master > 3
-      for: 1m
-      labels:
-        severity: critical
-      annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：主从复制延迟当前:{{ $value | humanize }}s \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
-
-    - alert: MySQL_is_Restart
-      expr: mysql_global_status_uptime <600
+    - alert: MysqlHighThreadsRunning
+      expr: max_over_time(mysql_global_status_threads_running[1m]) / mysql_global_variables_max_connections * 100 > 60
       for: 2m
       labels:
+        severity: warning
+      annotations:
+        summary: MySQL 活跃线程过多 (实例 {{ $labels.instance }})
+        description: "MySQL 实例 {{ $labels.instance }} 的活跃线程超过 60%。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
+
+    - alert: MysqlSlaveIoThreadNotRunning
+      expr: ( mysql_slave_status_slave_io_running and ON (instance) mysql_slave_status_master_server_id > 0 ) == 0
+      for: 0m
+      labels:
         severity: critical
       annotations:
-        description: "{{ $labels.group }}_{{ $labels.name }}：MySQL database is Restart. \n> {{ $labels.instance }}\n> {{ $labels.iid }}"
+        summary: MySQL 从库 IO 线程未运行 (实例 {{ $labels.instance }})
+        description: "MySQL 从库的 IO 线程在 {{ $labels.instance }} 未运行。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
+
+    - alert: MysqlSlaveSqlThreadNotRunning
+      expr: ( mysql_slave_status_slave_sql_running and ON (instance) mysql_slave_status_master_server_id > 0) == 0
+      for: 0m
+      labels:
+        severity: critical
+      annotations:
+        summary: MySQL 从库 SQL 线程未运行 (实例 {{ $labels.instance }})
+        description: "MySQL 从库的 SQL 线程在 {{ $labels.instance }} 未运行。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
+
+    - alert: MysqlSlaveReplicationLag
+      expr: ( (mysql_slave_status_seconds_behind_master - mysql_slave_status_sql_delay) and ON (instance) mysql_slave_status_master_server_id > 0 ) > 30
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: MySQL 从库复制延迟过大 (实例 {{ $labels.instance }})
+        description: "MySQL 实例 {{ $labels.instance }} 的复制延迟超过 30 秒。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
+
+    - alert: MysqlSlowQueries
+      expr: increase(mysql_global_status_slow_queries[1m]) > 0
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: MySQL 慢查询 (实例 {{ $labels.instance }})
+        description: "MySQL 实例 {{ $labels.instance }} 发生新的慢查询。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
+
+    - alert: MysqlInnodbLogWaits
+      expr: rate(mysql_global_status_innodb_log_waits[15m]) > 10
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: MySQL InnoDB 日志等待过多 (实例 {{ $labels.instance }})
+        description: "MySQL 实例 {{ $labels.instance }} 的 InnoDB 日志写入出现卡顿。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
+
+    - alert: MysqlRestarted
+      expr: mysql_global_status_uptime < 60
+      for: 0m
+      labels:
+        severity: info
+      annotations:
+        summary: MySQL 刚刚重启 (实例 {{ $labels.instance }})
+        description: "MySQL 实例 {{ $labels.instance }} 在一分钟内刚刚重启。\n  当前值 = {{ $value }}\n  标签 = {{ $labels }}"
 ```
 
 ### 6. 配置 blackbox-exporter
@@ -1791,3 +1695,147 @@ grafana 服务中有 3 个容器，所以修改 3 次
 ```
 
 ![](/images/posts/Kubesphere/2024-08-31-Kubernetes部署kubesphere/22.png)
+
+## 三、Kube-Event 事件收集工具
+
+目前k8s监控可以分为：资源监控，性能监控，安全健康等，但是在K8s中，如何表示一个资源对象的状态及一些列的资源状态转换，需要事件监控来表示，目前阿里有开源的K8s事件监控项目kube-eventer， 其将事件分为两种，一种是Warning事件，表示产生这个事件的状态转换是在非预期的状态之间产生的；另外一种是Normal事件，表示期望到达的状态，和目前达到的状态是一致的。
+
+可以收集pod/node/kubelet等资源对象的event，还可以收集自定义资源对象的event，汇聚处理发送到配置好好的接受端，架构图如下所示。
+
+![](/images/posts/Kubesphere/2024-08-31-Kubernetes部署kubesphere/24.png)
+
+官方支持的机器人：https://github.com/AliyunContainerService/kube-eventer/blob/master/docs/en/webhook-sink.md
+
+### 1. 创建飞书机器人准备 webhook
+
+![](/images/posts/Kubesphere/2024-08-31-Kubernetes部署kubesphere/25.png)
+
+
+### 2. 准备资源
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    name: kube-eventer
+  name: kube-eventer
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-eventer
+  template:
+    metadata:
+      labels:
+        app: kube-eventer
+      annotations:      
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccount: kube-eventer
+      containers:
+        - image: registry.aliyuncs.com/acs/kube-eventer:v1.2.7-ca03be0-aliyun
+          name: kube-eventer
+          command:
+            - "/kube-eventer"
+            - "--source=kubernetes:https://kubernetes.default"
+            ## .e.g,dingtalk sink demo
+            - --sink=webhook:https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxxxxxxxx?level=Warning&method=POST&header=Content-Type=application/json&custom_body_configmap=custom-body&custom_body_configmap_namespace=kube-system
+          env:
+          # If TZ is assigned, set the TZ value as the time zone
+          - name: TZ
+            value: "Asia/Shanghai" 
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+            - name: zoneinfo
+              mountPath: /usr/share/zoneinfo
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 500m
+              memory: 250Mi
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+        - name: zoneinfo
+          hostPath:
+            path: /usr/share/zoneinfo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-eventer
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-eventer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-eventer
+subjects:
+  - kind: ServiceAccount
+    name: kube-eventer
+    namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-eventer
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-body
+  namespace: kube-system
+data:
+  content: '{
+   "msg_type": "interactive",
+   "card": {
+      "config": {
+         "wide_screen_mode": true,
+         "enable_forward": true
+      },
+      "header": {
+         "title": {
+            "tag": "plain_text",
+            "content": "Kube-eventer"
+         },
+         "template": "Red"
+      },
+      "elements": [
+         {
+            "tag": "div",
+            "text": {
+               "tag": "lark_md",
+               "content":  "**EventType:**  {{ .Type }}\n**Name:**  {{ .InvolvedObject.Name }}\n**NameSpace:**  {{ .InvolvedObject.Namespace }}\n**EventKind:**  {{ .InvolvedObject.Kind }}\n**EventReason:**  {{ .Reason }}\n**EventTime:**  {{ .LastTimestamp }}\n**EventMessage:**  {{ .Message }}"
+            }
+                }
+        ]
+                }
+                }'
+```
+
+### 3. 效果
+
+![](/images/posts/Kubesphere/2024-08-31-Kubernetes部署kubesphere/26.png)

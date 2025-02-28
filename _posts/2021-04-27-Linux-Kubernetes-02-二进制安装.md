@@ -271,13 +271,27 @@ host0-22.host.com has address 10.0.0.22
 # 如果说域名不可访问，那么请把harbor.od.com换成所对应的IP地址+端口
 [root@host0-200 ~]# vim /etc/docker/daemon.json
 {
-  "graph": "/data/docker",
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io","harbor.od.com"],
-  "registry-mirrors": ["https://registry.docker-cn.com"],
+  "data-root": "/var/lib/docker",
+  "registry-mirrors": [
+      "https://docker.m.daocloud.io",
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com",
+      "https://registry.docker-cn.com",
+      "https://docker.mirrors.ustc.edu.cn",
+      "http://hub-mirror.c.163.com",
+  ],
+  "insecure-registries": [
+      "harbor.od.com"
+  ],
   "bip": "172.7.200.1/24",
+  "live-restore": true,
   "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "10"
+  }
 }
 [root@host0-200 ~]# mkdir -pv /data/docker && systemctl start docker && systemctl enable docker
 ```

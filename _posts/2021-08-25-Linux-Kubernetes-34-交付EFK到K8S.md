@@ -740,20 +740,24 @@ data:
   containers.input.conf: |-
     <source>
       @id fluentd-containers.log
-      @type tail                              # Fluentd 内置的输入方式，其原理是不停地从源文件中获取新的日志。
-      path /var/log/containers/*.log          # 挂载的服务器Docker容器日志地址
+      @type tail
+      path /var/log/containers/*.log
       pos_file /var/log/es-containers.log.pos
-      tag raw.kubernetes.*                    # 设置日志标签
+      tag raw.kubernetes.*
       read_from_head true
-      <parse>                                 # 多行格式化成JSON
-        @type multi_format                    # 使用 multi-format-parser 解析器插件
+      <parse>
+        @type multi_format
         <pattern>
-          format json                         # JSON解析器
-          time_key time                       # 指定事件时间的时间字段
-          time_format %Y-%m-%dT%H:%M:%S.%NZ   # 时间格式
+          format json
+          time_key time
+          time_format %Y-%m-%dT%H:%M:%S.%NZ
         </pattern>
         <pattern>
           format /^(?<time>.+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+          time_format %Y-%m-%dT%H:%M:%S.%N%:z
+        </pattern>
+        <pattern>
+          format /^(?<time>.+) (?<stream>stdout|stderr) (?<log>.*)/
           time_format %Y-%m-%dT%H:%M:%S.%N%:z
         </pattern>
       </parse>
@@ -767,7 +771,7 @@ data:
       message log                       
       stream stream                     
       multiline_flush_interval 5
-      max_bytes 500000
+      max_bytes 5000000
       max_lines 1000
     </match>
 
@@ -837,7 +841,7 @@ data:
       host elasticsearch
       port 9200
       logstash_format true
-      logstash_prefix k8s  # 设置 index 前缀为 k8s
+      logstash_prefix k8s-app  # 设置 index 前缀为 k8s
       request_timeout    30s
       <buffer>
         @type file

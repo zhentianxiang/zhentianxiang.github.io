@@ -250,7 +250,7 @@ wget http://blog.tianxiang.love/data/kubesphere-3.2.0/kubesphere-installer.yaml
 查看安装日志
 
 ```sh
-[root@kubesphere ~]# kubectl logs -n kubesphere-system $(kubectl get pod -n kubesphere-system -l app=ks-install -o jsonpath='{.items[0].metadata.name}') -f
+[root@kubesphere ~]# kubectl logs -n kubesphere-system $(kubectl get pod -n kubesphere-system -l app=ks-installer -o jsonpath='{.items[0].metadata.name}') -f
 ```
 
 查看pod运行状态

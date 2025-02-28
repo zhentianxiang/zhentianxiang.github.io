@@ -159,15 +159,29 @@ harbor机器和keepalived都安装
 
 ```sh
 [root@keepalived01 ~]# wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
-[root@keepalived01 ~]# yum -y install docker-ce-19.03.15 docker-ce-cli-19.03.15 containerd.io
+[root@keepalived01 ~]# yum -y install docker-ce-20.10.0 docker-ce-cli-20.10.0 containerd.io
 [root@keepalived01 ~]# systemctl start docker && systemctl enable docker
 [root@keepalived01 ~]# vim /etc/docker/daemon.json
 {
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io","hub.tianxiang.com"],
-  "registry-mirrors": ["https://q2gr04ke.mirror.aliyuncs.com"],
+  "data-root": "/var/lib/docker",
+  "registry-mirrors": [
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com",
+      "https://registry.docker-cn.com",
+      "https://docker.mirrors.ustc.edu.cn",
+      "http://hub-mirror.c.163.com",
+  ],
+  "insecure-registries": [
+      "10.203.15.21:5000"
+  ],
+  "live-restore": true,
   "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "10"
+  }
 }
 [root@keepalived01 ~]# systemctl daemon-reload && systemctl restart docker
 [root@keepalived01 ~]# wget https://github.com/docker/compose/releases/download/1.28.6/docker-compose-Linux-x86_64
@@ -347,13 +361,13 @@ UUID=f3ee650e-adaf-47d0-8d16-4c8240b28e54 /boot                   xfs     defaul
 
 ```sh
 [root@harbor01 ~]# mkdir -p /data/cert && cd /data/cert
-# 创建 CA 根证书
+# 生成自签名的 CA 证书和密钥
 [root@harbor01 cert]# openssl req  -newkey rsa:4096 -nodes -sha256 -keyout ca.key -x509 -days 3650 -out ca.crt -subj "/C=CN/L=Beijing/O=lisea/CN=harbor-registry"
-# 生成一个证书签名, 设置访问域名为tianxiang
-[root@harbor01 cert]# openssl req -newkey rsa:4096 -nodes -sha256 -keyout server.key -out server.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor-registry.com"
-# 服务端证书生成时，因为正书中需要有 login 的地址信息，所以需要把每个 harbor 节点的地址添加进去，包括 VIP
-[root@harbor01 cert]# echo subjectAltName = IP:192.168.20.51, IP:192.168.20.52, IP:192.168.20.53, IP:127.0.0.1, DNS:example.com, DNS:harbor.demo.com > extfile.cnf
-# 生成主机的证书
+# 生成服务器证书请求和密钥
+[root@harbor01 cert]# openssl req -newkey rsa:4096 -nodes -sha256 -keyout server.key -out server.csr -subj "/C=CN/L=Beijing/O=lisea/CN=harbor-registry"
+# 创建扩展文件，因为正书中需要有 login 的地址信息，所以需要把每个 harbor 节点的地址添加进去，包括 VIP
+[root@harbor01 cert]# echo subjectAltName = IP:192.168.20.51, IP:192.168.20.52, IP:192.168.20.53, IP:127.0.0.1, DNS:example.com, DNS:hub.tianxiang.com > extfile.cnf
+# 使用 CA 签署服务器证书
 [root@harbor01 cert]# openssl x509 -req -days 3650 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile extfile.cnf -out server.crt
 # 查看服务证书内容是否有设置的服务端IP地址
 [root@harbor01 cert]# openssl x509 -in ./server.crt -noout -text

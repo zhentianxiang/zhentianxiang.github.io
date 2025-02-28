@@ -71,15 +71,17 @@ data:
   master.cnf: |
     # Master配置
     [mysqld]
-    log-bin=mysqllog
-    skip-name-resolve
+    log-bin=mysql-bin                # 启用二进制日志
+    server-id=1                      # 为主库指定一个唯一的服务器ID
+    bind-address=0.0.0.0             # 允许任何 IP 访问，确保网络可连接
+    lower_case_table_names=1         # 如果需要，确保表名不区分大小写
   slave.cnf: |
     # Slave配置
     [mysqld]
-    super-read-only
-    skip-name-resolve
-    log-bin=mysql-bin
-    replicate-ignore-db=mysql
+    server-id=2                      # 为从库指定一个唯一的服务器ID
+    read-only=1                       # 启用只读模式
+    relay-log=mysqld-relay-bin        # 启用中继日志
+    log-bin=mysql-bin                # 启用二进制日志
 ```
 
 ### 3. 创建 Service
@@ -136,24 +138,7 @@ spec:
 - 用户所有写请求，必须以DNS记录的方式直接访问到Master节点，也就是mysql-cluster-0.mysql这条DNS记录。
 - 用户所有读请求，必须访问自动分配的DNS记录可以被转发到任意一个Master或Slave节点上，也就是mysql-read这条DNS记录。
 
-### 4. 创建 MySQL 密码 Secret
-
-mysql-secret.yaml
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mysql-cluster-secret
-  namespace: mysql
-  labels:
-    app: mysql-cluster
-type: Opaque
-data:
-  password: MTIzNDU2 # echo -n "123456" | base64
-```
-
-### 5. 创建 MySQL 集群实例
+### 4. 创建 MySQL 集群实例
 
 mysql-statefulset.yaml
 
@@ -197,12 +182,6 @@ spec:
       initContainers:
       - name: init-mysql
         image: registry.cn-hangzhou.aliyuncs.com/tianxiang_app/mysql:5.7
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-cluster-secret
-              key: password
         command:
         - bash
         - "-c"
@@ -224,12 +203,6 @@ spec:
           mountPath: /mnt/config-map
       - name: clone-mysql
         image: registry.cn-hangzhou.aliyuncs.com/tianxiang_app/xtrabackup:1.0
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-cluster-secret
-              key: password
         command:
         - bash
         - "-c"
@@ -251,11 +224,8 @@ spec:
       - name: mysql
         image: registry.cn-hangzhou.aliyuncs.com/tianxiang_app/mysql:5.7
         env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-cluster-secret
-              key: password
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "1"
         ports:
         - name: mysql
           containerPort: 3306
@@ -267,20 +237,20 @@ spec:
           mountPath: /etc/mysql/conf.d
         resources:
           requests:
-            cpu: 500m
+            cpu: 0.5
             memory: 1Gi
           limits:
-            cpu: 2000m
+            cpu: 2
             memory: 8Gi
         livenessProbe:
           exec:
-            command: ["mysqladmin", "ping", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+            command: ["mysqladmin", "ping"]
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:
           exec:
-            command: ["mysqladmin", "ping", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+            command: ["mysql", "-h", "127.0.0.1", "-e", "SELECT 1"]
           initialDelaySeconds: 5
           periodSeconds: 2
           timeoutSeconds: 1
@@ -289,12 +259,6 @@ spec:
         ports:
         - name: xtrabackup
           containerPort: 3307
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-cluster-secret
-              key: password
         command:
         - bash
         - "-c"
@@ -305,27 +269,31 @@ spec:
             mv xtrabackup_slave_info change_master_to.sql.in
             rm -f xtrabackup_binlog_info
           elif [[ -f xtrabackup_binlog_info ]]; then
-            [[ $(cat xtrabackup_binlog_info) =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
+            [[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
             rm xtrabackup_binlog_info
             echo "CHANGE MASTER TO MASTER_LOG_FILE='${BASH_REMATCH[1]}',\
                   MASTER_LOG_POS=${BASH_REMATCH[2]}" > change_master_to.sql.in
           fi
           if [[ -f change_master_to.sql.in ]]; then
-            echo "Waiting for mysqld to be ready（accepting connections）"
-            until mysql -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} -e "SELECT 1"; do sleep 1; done
+            echo "Waiting for mysqld to be ready (accepting connections)"
+            until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done
             echo "Initializing replication from clone position"
             mv change_master_to.sql.in change_master_to.sql.orig
-            mysql -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} << EOF
-          $(< change_master_to.sql.orig),
-            MASTER_HOST='mysql-cluster-0.mysql-cluster.mysql',
+            mysql -h 127.0.0.1 <<EOF
+          $(<change_master_to.sql.orig),
+            MASTER_HOST='mysql-cluster-0.mysql-cluster',
             MASTER_USER='root',
-            MASTER_PASSWORD='${MYSQL_ROOT_PASSWORD}',
+            MASTER_PASSWORD='',
             MASTER_CONNECT_RETRY=10;
           START SLAVE;
           EOF
           fi
           exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
-            "xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root --password=${MYSQL_ROOT_PASSWORD}"
+            "xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 500Mi
         volumeMounts:
         - name: data
           mountPath: /var/lib/mysql
@@ -337,20 +305,20 @@ spec:
         emptyDir: {}
       - name: config-map
         configMap:
-          name: mysql-cluster  # 修改为 mysql-cluster
+          name: mysql-cluster
   volumeClaimTemplates:
   - metadata:
       name: data
     spec:
       accessModes:
       - "ReadWriteOnce"
-      storageClassName: longhorn
+      storageClassName: openebs-hostpath
       resources:
         requests:
-          storage: 20Gi
+          storage: 100Gi
 ```
 
-### 6. 提交资源
+### 5. 提交资源
 
 ```sh
 $ kubectl apply -f .
@@ -361,89 +329,88 @@ $ kubectl apply -f .
 ### 1. 查看 slave 节点连接状态
 
 ```sh
-$ kubectl -n mysql exec mysql-cluster-1 -c mysql -- bash -c "mysql -uroot -p123456 -e 'show slave status \G'"
-$ kubectl -n mysql exec mysql-cluster-2 -c mysql -- bash -c "mysql -uroot -p123456 -e 'show slave status \G'"
-mysql: [Warning] Using a password on the command line interface can be insecure.
+$ kubectl -n mysql exec mysql-cluster-1 -c mysql -- bash -c "mysql -uroot -e 'show slave status \G'"
+$ kubectl -n mysql exec mysql-cluster-2 -c mysql -- bash -c "mysql -uroot -e 'show slave status \G'"
 *************************** 1. row ***************************
                Slave_IO_State: Waiting for master to send event
-                  Master_Host: mysql-0.mysql.mysql
+                  Master_Host: mysql-cluster-0.mysql-cluster
                   Master_User: root
                   Master_Port: 3306
                 Connect_Retry: 10
-              Master_Log_File: mysqllog.000003
+              Master_Log_File: mysql-bin.000003
           Read_Master_Log_Pos: 154
-               Relay_Log_File: mysql-cluster-1-relay-bin.000002
-                Relay_Log_Pos: 319
-        Relay_Master_Log_File: mysqllog.000003
+               Relay_Log_File: mysqld-relay-bin.000002
+                Relay_Log_Pos: 320
+        Relay_Master_Log_File: mysql-bin.000003
              Slave_IO_Running: Yes
             Slave_SQL_Running: Yes
-              Replicate_Do_DB:  
-          Replicate_Ignore_DB: mysql
-           Replicate_Do_Table:  
-       Replicate_Ignore_Table:  
-      Replicate_Wild_Do_Table:  
-  Replicate_Wild_Ignore_Table:  
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
                    Last_Errno: 0
-                   Last_Error:  
+                   Last_Error: 
                  Skip_Counter: 0
           Exec_Master_Log_Pos: 154
               Relay_Log_Space: 528
               Until_Condition: None
-               Until_Log_File:  
+               Until_Log_File: 
                 Until_Log_Pos: 0
            Master_SSL_Allowed: No
-           Master_SSL_CA_File:  
-           Master_SSL_CA_Path:  
-              Master_SSL_Cert:  
-            Master_SSL_Cipher:  
-               Master_SSL_Key:  
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
         Seconds_Behind_Master: 0
 Master_SSL_Verify_Server_Cert: No
                 Last_IO_Errno: 0
-                Last_IO_Error:  
+                Last_IO_Error: 
                Last_SQL_Errno: 0
-               Last_SQL_Error:  
-  Replicate_Ignore_Server_Ids:  
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
              Master_Server_Id: 100
-                  Master_UUID: 1bad4d64-6290-11ea-8376-0242ac113802
+                  Master_UUID: 5e8814a1-c429-11ef-9c92-22a40940e72a
              Master_Info_File: /var/lib/mysql/master.info
                     SQL_Delay: 0
           SQL_Remaining_Delay: NULL
       Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
            Master_Retry_Count: 86400
-                  Master_Bind:  
-      Last_IO_Error_Timestamp:  
-     Last_SQL_Error_Timestamp:  
-               Master_SSL_Crl:  
-           Master_SSL_Crlpath:  
-           Retrieved_Gtid_Set:  
-            Executed_Gtid_Set:  
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 
+            Executed_Gtid_Set: 
                 Auto_Position: 0
-         Replicate_Rewrite_DB:  
-                 Channel_Name:  
+         Replicate_Rewrite_DB: 
+                 Channel_Name: 
            Master_TLS_Version:
 ```
 
 ### 2. 在 master 节点生成数据
 
 ```sh
-$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -p123456 -e 'create database test'"
-$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -p123456 -e 'use test;create table counter(c int);'"
-$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -p123456 -e 'use test;insert into counter values(123)'"
+$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -e 'create database test'"
+$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -e 'use test;create table counter(c int);'"
+$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -e 'use test;insert into counter values(123)'"
 ```
 
 ### 3. 检查数据是否同步
 
 ```sh
-$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -p123456 -e 'use test;select * from counter'"
+$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
 mysql: [Warning] Using a password on the command line interface can be insecure.
 c
 123
-$ kubectl -n mysql exec mysql-cluster-1 -c mysql -- bash -c "mysql -uroot -p123456 -e 'use test;select * from counter'"
+$ kubectl -n mysql exec mysql-cluster-1 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
 mysql: [Warning] Using a password on the command line interface can be insecure.
 c
 123
-$ kubectl -n mysql exec mysql-cluster-2 -c mysql -- bash -c "mysql -uroot -p123456 -e 'use test;select * from counter'"
+$ kubectl -n mysql exec mysql-cluster-2 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
 mysql: [Warning] Using a password on the command line interface can be insecure.
 c
 123
@@ -460,12 +427,193 @@ mysql-cluster-1   2/2     Running   0          14m     192.18.235.50    k8s-node
 mysql-cluster-2   2/2     Running   0          14m     192.18.107.220   k8s-node3           <none>           <none>
 mysql-cluster-3   2/2     Running   0          3m      192.18.169.163   k8s-node2           <none>           <none>
 mysql-cluster-4   2/2     Running   0          2m11s   192.18.36.86     k8s-node1           <none>           <none>
-$ kubectl -n mysql exec mysql-cluster-3 -c mysql -- bash -c "mysql -uroot -p123456 -e 'use test;select * from counter'"
+$ kubectl -n mysql exec mysql-cluster-3 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
 mysql: [Warning] Using a password on the command line interface can be insecure.
 c
 123
-$ kubectl -n mysql exec mysql-cluster-4 -c mysql -- bash -c "mysql -uroot -p123456 -e 'use test;select * from counter'"
+$ kubectl -n mysql exec mysql-cluster-4 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
 mysql: [Warning] Using a password on the command line interface can be insecure.
+c
+123
+```
+
+## 四、模拟故障
+
+### 1. 停止节点调度
+```sh
+$ kubectl cordon k8s-node1 
+node/k8s-node1 cordoned
+$ kubectl delete pods -n mysql mysql-cluster-0 
+pod "mysql-cluster-0" deleted
+```
+
+### 2. 删除 pod 使其无法调度
+
+```sh
+$ kubectl delete pods -n mysql mysql-cluster-0 
+pod "mysql-cluster-0" deleted
+
+$ kubectl get pods -n mysql  -o wide
+NAME              READY   STATUS        RESTARTS   AGE   IP               NODE        NOMINATED NODE   READINESS GATES
+mysql-cluster-0   2/2     Terminating   0          21m   192.18.36.122    k8s-node1   <none>           <none>
+mysql-cluster-1   2/2     Running       0          20m   192.18.169.172   k8s-node2   <none>           <none>
+mysql-cluster-2   2/2     Running       0          20m   192.18.107.221   k8s-node3   <none>           <none>
+```
+
+### 3. 查看 slave 节点日志
+
+```sh
+$ kubectl -n mysql logs --tail=100 -f mysql-cluster-1 mysql
+2024-12-27T08:26:55.317874Z 4 [ERROR] Slave I/O for channel '': error reconnecting to master 'root@mysql-cluster-0.mysql-cluster:3306' - retry-time: 10  retries: 3, Error_code: 2005
+2024-12-27T08:27:05.332476Z 4 [ERROR] Slave I/O for channel '': error reconnecting to master 'root@mysql-cluster-0.mysql-cluster:3306' - retry-time: 10  retries: 4, Error_code: 2005
+```
+
+### 4. 进行 pvc 存储目录备份
+
+```sh
+$ kubectl get pvc -n mysql 
+NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS       AGE
+data-mysql-cluster-0   Bound    pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2   100Gi      RWO            openebs-hostpath   17m
+data-mysql-cluster-1   Bound    pvc-151d9d1c-cec1-45ce-8341-7a9921b5c0dc   100Gi      RWO            openebs-hostpath   17m
+data-mysql-cluster-2   Bound    pvc-a3faa26e-39c6-4e9d-85cf-41591f26905a   100Gi      RWO            openebs-hostpath   16m
+
+# 登录到 k8s-node1
+$ ssh k8s-node1 
+Last login: Fri Dec 27 17:05:14 2024 from 172.16.246.151
+$ cd /var/openebs/local/
+$ ls
+pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2
+$ du -sh pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2/
+213M    pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2/
+
+$ zip -r pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2-mysql-cluster-0.zip pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2/
+
+# 删除 pvc 否则一会儿重新调度还会调度在这儿（当然我模拟环境是吧 k8s-node1 停止调度了，不删除也不会调度）
+$ rm -rf pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2
+```
+### 5. 选择新节点启动 mysql-cluster-0
+
+```sh
+$ logout
+Connection to k8s-node1 closed.
+
+# 选择新节点
+$  kubectl label node k8s-node4 k8s-app=mysql
+node/k8s-node4 labeled
+
+# 恢复调度(我的目的是为了删除这个pod，否则一直Terminating)
+$ kubectl uncordon k8s-node1 
+node/k8s-node1 already uncordoned
+
+# 停止 statefule 服务
+$ kubectl scale statefulset -n mysql mysql-cluster --replicas=0
+statefulset.apps/mysql-cluster scaled
+
+# 并且删除他的 pvc 资源
+$ kubectl delete pvc -n mysql data-mysql-cluster-0
+persistentvolumeclaim "data-mysql-cluster-0" deleted
+
+$ kubectl get pods -n mysql
+No resources found in mysql namespace.
+
+# 再次停止调度(防止调度到k8s-node1)有问题机器上去
+$ kubectl cordon k8s-node1 
+node/k8s-node1 cordoned
+
+# 开启服务
+$ kubectl scale statefulset -n mysql mysql-cluster --replicas=3
+
+# 发现已经调度到 k8s-node4 节点了,同时也创建了新的 pvc 存储
+$ kubectl get pods,pvc -n mysql  -o wide
+NAME                  READY   STATUS     RESTARTS   AGE   IP       NODE        NOMINATED NODE   READINESS GATES
+pod/mysql-cluster-0   0/2     Init:0/2   0          14s   <none>   k8s-node4   <none>           <none>
+
+NAME                                         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS       AGE   VOLUMEMODE
+persistentvolumeclaim/data-mysql-cluster-0   Bound    pvc-2e0d1733-da8d-4136-ba4f-0bad95cd3ef2   100Gi      RWO            openebs-hostpath   17s   Filesystem
+persistentvolumeclaim/data-mysql-cluster-1   Bound    pvc-151d9d1c-cec1-45ce-8341-7a9921b5c0dc   100Gi      RWO            openebs-hostpath   35m   Filesystem
+persistentvolumeclaim/data-mysql-cluster-2   Bound    pvc-a3faa26e-39c6-4e9d-85cf-41591f26905a   100Gi      RWO            openebs-hostpath   35m   Filesystem
+
+# 再次停止调度
+$ kubectl scale statefulset -n mysql mysql-cluster --replicas=0
+statefulset.apps/mysql-cluster scaled
+```
+
+### 6. 恢复数据
+
+```sh
+# 登录到 k8s-node4
+$ ssh k8s-node4
+
+# 进入 pvc 存储目录
+$ cd /var/openebs/local/
+
+# 拷贝 k8s-node1 数据过来
+$ scp k8s-node1:/var/openebs/local/*.zip ./
+
+$ ls -lh
+total 7.7M
+drwxrwxrwx 2 root root    6 Dec 27 17:23 pvc-2e0d1733-da8d-4136-ba4f-0bad95cd3ef2
+-rw-r--r-- 1 root root 7.7M Dec 27 17:26 pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2-mysql-cluster-0.zip
+
+# 解压原数据文件
+$ unzip pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2-mysql-cluster-0.zip
+
+# 删除新创建的，重命名旧的为新的
+$ rm -rf pvc-2e0d1733-da8d-4136-ba4f-0bad95cd3ef2/
+
+$ mv pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2 pvc-2e0d1733-da8d-4136-ba4f-0bad95cd3ef2
+
+$ ls -lh
+total 7.7M
+drwxrwxrwx 3 root root   19 Dec 27 16:47 pvc-2e0d1733-da8d-4136-ba4f-0bad95cd3ef2
+-rw-r--r-- 1 root root 7.7M Dec 27 17:26 pvc-d64838da-13cd-4dba-a1d1-cc80203ce9d2-mysql-cluster-0.zip
+
+$ ls pvc-2e0d1733-da8d-4136-ba4f-0bad95cd3ef2/mysql/
+auto.cnf    client-cert.pem  ibdata1      ibtmp1            mysql-bin.000002  mysql-bin.index     public_key.pem   sys
+ca-key.pem  client-key.pem   ib_logfile0  mysql             mysql-bin.000003  performance_schema  server-cert.pem  xtrabackup_backupfiles
+ca.pem      ib_buffer_pool   ib_logfile1  mysql-bin.000001  mysql-bin.000004  private_key.pem     server-key.pem
+```
+
+### 7. 启动服务
+
+```sh
+$ kubectl scale statefulset -n mysql mysql-cluster --replicas=3
+
+$ kubectl get pods -n mysql -o wide
+NAME              READY   STATUS    RESTARTS   AGE   IP              NODE        NOMINATED NODE   READINESS GATES
+mysql-cluster-0   1/2     Running   0          42s   192.18.122.94   k8s-node4   <none>           <none>
+
+$ kubectl get pods -n mysql -o wide
+NAME              READY   STATUS    RESTARTS   AGE    IP               NODE        NOMINATED NODE   READINESS GATES
+mysql-cluster-0   2/2     Running   0          105s   192.18.122.94    k8s-node4   <none>           <none>
+mysql-cluster-1   2/2     Running   0          63s    192.18.169.175   k8s-node2   <none>           <none>
+mysql-cluster-2   2/2     Running   0          55s    192.18.107.204   k8s-node3   <none>           <none>
+```
+
+### 8. 检查服务
+
+```sh
+# 检查主从同步状态
+$ kubectl -n mysql exec mysql-cluster-1 -c mysql -- bash -c "mysql -uroot -e 'show slave status \G'"|grep -E "Master_Host|Slave_IO_Running|Slave_SQL_Running"
+                  Master_Host: mysql-cluster-0.mysql-cluster
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+
+$ kubectl -n mysql exec mysql-cluster-2 -c mysql -- bash -c "mysql -uroot -e 'show slave status \G'"|grep -E "Master_Host|Slave_IO_Running|Slave_SQL_Running"
+                  Master_Host: mysql-cluster-0.mysql-cluster
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+
+# 测试数据是否同步
+$ kubectl -n mysql exec mysql-cluster-0 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
+c
+123
+$ kubectl -n mysql exec mysql-cluster-1 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
+c
+123
+$ kubectl -n mysql exec mysql-cluster-2 -c mysql -- bash -c "mysql -uroot -e 'use test;select * from counter'"
 c
 123
 ```
@@ -892,7 +1040,7 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 ```sh
 $ kubectl -n mysql exec -it mysql-cluster-2 -- bash -c "mysql -uroot -p123456 -e 'STOP SLAVE;'"
 $ kubectl -n mysql exec -it mysql-cluster-2 -- bash -c "mysql -uroot -p123456 -e 'RESET SLAVE;'"
-$ kubectl -n mysql exec -it mysql-cluster-2 -- bash -c "mysql -uroot -p123456 -e 'STAER SLAVE;'"
+$ kubectl -n mysql exec -it mysql-cluster-2 -- bash -c "mysql -uroot -p123456 -e 'START SLAVE;'"
 $ kubectl -n mysql exec -it mysql-cluster-2 -- bash -c "mysql -uroot -p123456 -e 'show slave status \G;'"|head -n 15
 ```
 

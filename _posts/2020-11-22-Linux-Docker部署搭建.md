@@ -11,27 +11,31 @@ tags: Linux-Docker
 
 ```sh
 [root@tianxiang ~]# wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
-[root@tianxiang ~]# yum -y install docker-ce-19.03.15 docker-ce-cli-19.03.15 containerd.io
+[root@tianxiang ~]# yum -y install docker-ce-20.10.0 docker-ce-cli-20.10.0 containerd.io
 [root@tianxiang ~]# systemctl enable docker --now
 # docker存储目录根据实际情况修改
 [root@tianxiang ~]# vim /etc/docker/daemon.json
 {
+  "data-root": "/var/lib/docker",
+  "registry-mirrors": [
+      "https://docker.m.daocloud.io",
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com",
+      "https://registry.docker-cn.com",
+      "https://docker.mirrors.ustc.edu.cn",
+      "http://hub-mirror.c.163.com"
+  ],
+  "insecure-registries": [
+      "10.203.15.21:5000"
+  ],
+  "live-restore": true,
   "exec-opts": ["native.cgroupdriver=systemd"],
   "log-driver": "json-file",
   "log-opts": {
-    "max-size": "100m"
-  },
-  "graph": "/var/lib/docker",
-  "storage-driver": "overlay2",
-  "insecure-registries": ["10.0.16.9:5000","10.0.16.9:30143"],
-  "registry-mirrors":[
-      "https://kfwkfulq.mirror.aliyuncs.com",
-      "https://2lqq34jg.mirror.aliyuncs.com",
-      "https://pee6w651.mirror.aliyuncs.com",
-      "http://hub-mirror.c.163.com",
-      "https://docker.mirrors.ustc.edu.cn",
-      "https://registry.docker-cn.com"
-  ]
+    "max-size": "100m",
+    "max-file": "10"
+  }
 }
 [root@tianxiang ~]# systemctl daemon-reload
 [root@tianxiang ~]# systemctl restart docker
@@ -58,12 +62,13 @@ tags: Linux-Docker
   "storage-driver": "overlay2",
   "insecure-registries": ["10.0.16.9:5000","10.0.16.9:30143"],
   "registry-mirrors":[
-      "https://kfwkfulq.mirror.aliyuncs.com",
-      "https://2lqq34jg.mirror.aliyuncs.com",
-      "https://pee6w651.mirror.aliyuncs.com",
-      "http://hub-mirror.c.163.com",
+      "https://docker.m.daocloud.io",
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com",
+      "https://registry.docker-cn.com",
       "https://docker.mirrors.ustc.edu.cn",
-      "https://registry.docker-cn.com"
+      "http://hub-mirror.c.163.com"
   ]
 }
 [root@tianxiang ~]# systemctl daemon-reload docker

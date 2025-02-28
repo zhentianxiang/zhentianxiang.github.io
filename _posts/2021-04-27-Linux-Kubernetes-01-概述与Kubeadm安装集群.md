@@ -250,21 +250,23 @@ EOF
 修改docker运行环境
 [root@k8s-master ~]# vim /etc/docker/daemon.json
 {
-    "graph": "/var/lib/docker",
-    "registry-mirrors": [
-        "https://registry.docker-cn.com",
-        "https://docker.mirrors.ustc.edu.cn"
-    ],
-    "insecure-registries": [
-        "harbor.hyper.com"
-    ],
-    "live-restore": true,
-    "exec-opts": ["native.cgroupdriver=systemd"],
-    "log-driver": "json-file",
-    "log-opts": {
-        "max-size": "100m",
-        "max-file": "10"
-    }
+  "data-root": "/var/lib/docker",
+  "registry-mirrors": [
+      "https://docker.m.daocloud.io",
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com"
+  ],
+  "insecure-registries": [
+      "10.203.15.21:5000"
+  ],
+  "live-restore": true,
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "10"
+  }
 }
 ---
 # 安装 nvidia-docker 的用以下

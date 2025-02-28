@@ -110,6 +110,8 @@ data:
       enforce_metric_name: false
       reject_old_samples: true      # 旧样品是否会被拒绝
       reject_old_samples_max_age: 168h      # 拒绝旧样本的最大时限
+      ingestion_rate_mb: 10    # 每个用户每秒的采样率限制
+      ingestion_burst_size_mb: 20    # 每个用户允许的采样突发大小
     schema_config:      # 配置从特定时间段开始应该使用哪些索引模式
       configs:
       - from: 2020-10-24      # 创建索引的日期。如果这是唯一的schema_config，则使用过去的日期，否则使用希望切换模式时的日期
@@ -140,34 +142,12 @@ data:
 EOF
 ```
 
-### 4. 准备PVC.yaml
+### 4. 准备Statefulsets.yaml
 
 ```yaml
-[root@k8s-kubersphere loki]# cat > PVC.yaml <<EOF
+[root@k8s-kubersphere loki]# cat > Statefulsets.yaml <<EOF
 apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: loki-pvc
-  namespace: loki
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "do-block-storage"
-spec:
-  accessModes:
-  - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
-EOF
-```
-
-### 5. 准备Deployment.yaml
-
-我这里使用的是deployment，如果要使用statusfulsets，可以自定看着修改
-
-```yaml
-[root@k8s-kubersphere loki]# cat > Deployment.yaml <<EOF
-apiVersion: apps/v1
-kind: Deployment
+kind: Service
 metadata:
   name: loki
   namespace: loki
@@ -175,76 +155,107 @@ metadata:
     app: loki
     release: loki
 spec:
+  type: NodePort
+  ports:
+    - port: 3100
+      protocol: TCP
+      name: http-metrics
+      targetPort: http-metrics
+      nodePort: 30201
+  selector:
+    app: loki
+    release: loki
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki
+  namespace: loki
+  labels:
+    app: loki
+    release: loki
+spec:
+  podManagementPolicy: OrderedReady
   replicas: 1
-  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: loki
       release: loki
-#  serviceName: loki-headless
+  serviceName: loki
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       labels:
         app: loki
         release: loki
     spec:
-      containers:
-      - name: loki
-        image: grafana/loki:2.3.0
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 3100
-          name: http-metrics
-          protocol: TCP
-        args:
-          - -config.file=/etc/loki/loki.yaml
-        volumeMounts:
-        - name: loki-config
-          mountPath: /etc/loki
-        - name: storage
-          mountPath: /data
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /ready
-            port: http-metrics
-            scheme: HTTP
-          initialDelaySeconds: 45
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /ready
-            port: http-metrics
-            scheme: HTTP
-          initialDelaySeconds: 45
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-      securityContext:
-        fsGroup: 10001
-        runAsGroup: 10001
-        runAsNonRoot: true
-        runAsUser: 10001
-      serviceAccount: loki
       serviceAccountName: loki
+      initContainers:
+      - name: chmod-data
+        image: busybox:1.28.4
+        imagePullPolicy: IfNotPresent
+        command: ["chmod","-R","777","/loki/data"]
+        volumeMounts:
+        - name: storage
+          mountPath: /loki/data
+      containers:
+        - name: loki
+          image: grafana/loki:2.9.6
+          imagePullPolicy: IfNotPresent
+          args:
+            - -config.file=/etc/loki/loki.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki
+            - name: storage
+              mountPath: /data
+            - name: wal
+              mountPath: /wal
+          ports:
+            - name: http-metrics
+              containerPort: 3100
+              protocol: TCP
+          livenessProbe:
+            httpGet: 
+              path: /ready
+              port: http-metrics
+              scheme: HTTP
+            initialDelaySeconds: 45
+          readinessProbe:
+            httpGet: 
+              path: /ready
+              port: http-metrics
+              scheme: HTTP
+            initialDelaySeconds: 45
+          securityContext:
+            readOnlyRootFilesystem: true
+      terminationGracePeriodSeconds: 4800
       volumes:
-      - name: loki-config
-        configMap:
-          defaultMode: 493
-          name: loki
-      - name: storage
-        persistentVolumeClaim:
-          claimName: loki-pvc
+        - name: config
+          configMap:
+            name: loki
+        - name: wal
+          emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: storage
+      labels:
+        app: loki
+        release: loki
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: nfs-provisioner-storage
+      resources:
+        requests:
+          storage: 100Gi
 EOF
 ```
 
-### 6.准备service.yaml
+### 5.准备service.yaml
 
 ```yaml
-[root@k8s-kubersphere loki]# cat service.yaml
+[root@k8s-kubersphere loki]# cat > service.yaml <<EOF
 apiVersion: v1
 kind: Service
 metadata:
@@ -265,27 +276,32 @@ spec:
     app: loki
     release: loki
 ---
-#apiVersion: v1
-#kind: Service
-#metadata:
-#  name: loki-headless
-#  namespace: loki
-#  labels:
-#    app: loki
-#    release: loki
-#spec:
-#  clusterIP: None
-#  publishNotReadyAddresses: true
-#  ports:
-#  - name: http-metrics
-#    port: 3100
-#    protocol: TCP
-#    targetPort: http-metrics
-#    nodePort: 32002
-#    type: NodePort  
-#  selector:
-#    app: loki
-#    release: loki
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-headless
+  namespace: loki
+  labels:
+    app: loki
+    release: loki
+spec:
+  clusterIP: None
+  ports:
+  - name: http-metrics
+    port: 3100
+    protocol: TCP
+    targetPort: http-metrics
+  selector:
+    app: loki
+    release: loki
+EOF
+```
+
+```sh
+[root@k8s-master01 loki]# kubectl get svc -n loki 
+NAME            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+loki            NodePort    10.111.200.188   <none>        3100:30201/TCP   113m
+loki-headless   ClusterIP   None             <none>        3100/TCP         122m
 ```
 
 ## 四、部署promtail
@@ -298,7 +314,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: loki-promtail
-  namespace: kube-system
+  namespace: loki
   labels:
     app: promtail
 data:
@@ -576,7 +592,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: loki-promtail
-  namespace: kube-system
+  namespace: loki
   labels:
     app: promtail
 spec:
@@ -595,11 +611,12 @@ spec:
       serviceAccountName: loki-promtail
       containers:
         - name: promtail
-          image: grafana/promtail:2.3.0
+          image: grafana/promtail:2.9.3
           imagePullPolicy: IfNotPresent
           args:
           - -config.file=/etc/promtail/promtail.yaml
-          - -client.url=http://loki.loki.svc.cluster.local:3100/loki/api/v1/push
+          - -client.url=http://10.111.200.188:3100/loki/api/v1/push
+          # 注意这里我填写的是 Loki 的service地址
           env:
           - name: HOSTNAME
             valueFrom:
@@ -607,16 +624,16 @@ spec:
                 apiVersion: v1
                 fieldPath: spec.nodeName
           volumeMounts:
-          - mountPath: /etc/promtail
-            name: config
-          - mountPath: /run/promtail
-            name: run
-          - mountPath: /home/docker/containers      #我这里修改过docker默认存储目录
-            name: docker
+          - name: config
+            mountPath: /etc/promtail
+          - name: run
+            mountPath: /run/promtail
+          - name: var-lib-docker
             readOnly: true
-          - mountPath: /var/log/pods
-            name: pods
+            mountPath: /var/lib/docker/containers
+          - name: pods
             readOnly: true
+            mountPath: /var/log/pods
           ports:
           - containerPort: 3101
             name: http-metrics
@@ -648,9 +665,9 @@ spec:
           hostPath:
             path: /run/promtail
             type: ""
-        - name: docker
+        - name: var-lib-docker
           hostPath:
-            path: /home/docker/containers   #我这里修改过docker默认存储目录
+            path: /var/lib/docker/containers  # 注意你的docker存储目录是否是这个
         - name: pods
           hostPath:
             path: /var/log/pods
@@ -667,7 +684,7 @@ metadata:
   name: loki-promtail
   labels:
     app: promtail
-  namespace: kube-system
+  namespace: loki
 
 ---
 kind: ClusterRole
@@ -694,11 +711,11 @@ metadata:
   name: promtail-clusterrolebinding
   labels:
     app: promtail
-  namespace: kube-system
+  namespace: loki
 subjects:
   - kind: ServiceAccount
     name: loki-promtail
-    namespace: kube-system
+    namespace: loki
 roleRef:
   kind: ClusterRole
   name: promtail-clusterrole
@@ -711,13 +728,12 @@ EOF
 最后把所有的yaml文件apply一下，等待服务全部启动
 
 ```sh
-[root@k8s-kubersphere ~]# kubectl get pods -n loki -o wide
-NAME                    READY   STATUS    RESTARTS   AGE   IP              NODE         NOMINATED NODE   READINESS GATES
-loki-5cfc9dcb47-6zd2f   1/1     Running   0          13m   10.100.85.248   k8s-node01   <none>           <none>
-[root@k8s-kubersphere ~]# kubectl get pods -n kube-system -o wide |grep promtail
-loki-promtail-bxdqq                        1/1     Running   1          103m   10.100.58.217   k8s-node02        <none>           <none>
-loki-promtail-fdq8s                        1/1     Running   1          104m   10.100.85.239   k8s-node01        <none>           <none>
-loki-promtail-jhmks                        1/1     Running   1          103m   10.100.46.52    k8s-kubersphere   <none>           <none>
+[root@k8s-master01 promtail]# kubectl get pods -n loki 
+NAME                  READY   STATUS    RESTARTS   AGE
+loki-0                1/1     Running   0          115m
+loki-promtail-45dc6   1/1     Running   0          108m
+loki-promtail-hpbtp   1/1     Running   0          109m
+
 ```
 
 ## 六、Grafana配置Loki

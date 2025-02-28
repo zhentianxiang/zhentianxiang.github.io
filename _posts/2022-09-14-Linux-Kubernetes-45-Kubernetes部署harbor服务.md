@@ -249,6 +249,9 @@ openssl x509 -req -days 3650 -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateseria
 $ bash script.sh
 
 $ kubectl create secret tls harbor-tls -n harbor  --cert=tls.crt --key=tls.key
+
+# 检查
+$ kubectl get secret harbor-tls -o jsonpath="{.data['tls\.crt']}" | base64 --decode | openssl x509 -in /dev/stdin -text -noout | grep 'Not After'
 ```
 
 ```sh

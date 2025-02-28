@@ -65,17 +65,30 @@ tags: Linux-Docker
 
 ```
 [root@storage-nfs ~]# wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
-[root@storage-nfs ~]# yum -y install docker-ce-19.03.15 docker-ce-cli-19.03.15 containerd.io
+[root@storage-nfs ~]# yum -y install docker-ce-20.10.0 docker-ce-cli-20.10.0 containerd.io
 [root@storage-nfs ~]# systemctl start docker
 [root@storage-nfs ~]# systemctl enable docker
 [root@storage-nfs ~]# vim /etc/docker/daemon.json
 {
-  "storage-driver": "overlay2",
-  "insecure-registries": ["registry.access.redhat.com","quay.io"],
-  "registry-mirrors": ["https://q2gr04ke.mirror.aliyuncs.com"],
+  "data-root": "/var/lib/docker",
+  "registry-mirrors": [
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com",
+      "https://registry.docker-cn.com",
+      "https://docker.mirrors.ustc.edu.cn",
+      "http://hub-mirror.c.163.com",
+  ],
+  "insecure-registries": [
+      "10.203.15.21:5000"
+  ],
+  "live-restore": true,
   "exec-opts": ["native.cgroupdriver=systemd"],
-  "live-restore": true
-}
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "10"
+  
 [root@storage-nfs ~]# systemctl daemon-reload && systemctl restart docker
 ```
 

@@ -4,6 +4,7 @@ title: 2023-09-03-Docker容器部署openVPN
 date: 2023-09-03
 tags: 其他
 music-id: 1905004937
+
 ---
 
 ## 一、OpenVPN 简介
@@ -23,14 +24,14 @@ VPN (虚拟专用网)发展至今已经不在是一个单纯的经过加密的�
 ### 1. 拉取镜像
 
 ```sh
-$ docker pull zhentianxiang/openvpn:2.4.8
+[root@k8s-master openvpn]# docker pull zhentianxiang/openvpn:2.4.8
 ```
 
 ### 2. 创建挂载目录
 
 ```sh
-$ mkdir -pv /etc/openvpn/conf
-$ cd /etc/openvpn/
+[root@k8s-master openvpn]# mkdir -pv /etc/openvpn/conf
+[root@k8s-master openvpn]# cd /etc/openvpn/
 ```
 
 ### 3. 生成配置文件
@@ -56,15 +57,17 @@ $ cd /etc/openvpn/
 ```sh
 # 1.1.1.1 是公网IP，根据实际需求切换自己的公网IP
 # 默认是udp协议，我这边使用的是tcp协议
-$ docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_genconfig -u tcp://1.1.1.1
+[root@k8s-master openvpn]# docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_genconfig -u udp://1.1.1.1
+```
 
-# 简单修改一下配置文件，当然直接使用默认的也是可以的
-$ cat openvpn.conf
+- 配置文件
+
+```sh
 # 监听地址
 local 0.0.0.0
 
 # 协议
-proto tcp
+proto udp
 
 # 端口
 port 1194
@@ -72,24 +75,32 @@ port 1194
 # 虚拟网卡设备
 dev tun0
 
-key /etc/openvpn/pki/private/1.1.1.1.key
+# 证书与密钥
+key /etc/openvpn/pki/private/47.120.62.2.key
 ca /etc/openvpn/pki/ca.crt
-cert /etc/openvpn/pki/issued/1.1.1.1.crt
+cert /etc/openvpn/pki/issued/47.120.62.2.crt
 dh /etc/openvpn/pki/dh.pem
 tls-auth /etc/openvpn/pki/ta.key
 key-direction 0
 
-# 通过ping得知超时时，当重启vpn后将使用同一个密钥文件以及保持tun连接状态
+# 连接保持
 persist-tun
 persist-key
 
-# 日志记录的详细级别
-verb 3
+# 表示禁用 OpenVPN 对缓冲区大小的显式设置
+sndbuf 0 
+rcvbuf 0
+
+# 日志级别
+verb 5
 status /tmp/openvpn-status.log
 
-# 运行用户
+# 运行用户权限
 user nobody
 group nogroup
+
+# 客户端配置目录
+client-config-dir /etc/openvpn/ccd
 
 # 允许客户端之间互相访问
 client-to-client
@@ -100,29 +111,88 @@ max-clients 10
 # 保持连接时间
 keepalive 20 120
 
-# 允许多人使用同一个证书连接VPN，不建议使用，注释状态
-duplicate-cn
-
-# 路由规则，告诉 OpenVPN 服务器要将流量路由到目标网络 192.168.255.0/24
-route 192.168.255.0 255.255.255.0
+# 禁止多客户端使用相同证书
+; duplicate-cn
 
 # vpn服务端为自己和客户端分配IP的地址池
-server 192.168.255.0 255.255.255.0
+server 10.100.255.0 255.255.255.0
 
-### VPN 客户端的DNS，如果内网环境有自己的DNS服务可以替换为DNS服务，这样你连接到内网环境中直接可以使用内网DNS服务器
-#push "block-outside-dns"
-#push "dhcp-option DNS 223.5.5.5"
-#push "dhcp-option DNS 114.114.114.114"
+# 子网路由
+push "route 172.16.180.0 255.255.255.0"  # 办公室网络1
+push "route 192.168.180.0 255.255.255.0" # 办公室网络2
+push "route 192.168.200.0 255.255.255.0" # 办公室网络2
+push "route 192.168.50.0 255.255.255.0"  # 办公室网络3
+
+# DNS 配置
+push "dhcp-option DNS 223.5.5.5"
+push "dhcp-option DNS 114.114.114.114"
+push "block-outside-dns"
 ```
 
 ### 4. 生成密钥文件
 
 ```sh
-$ docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 ovpn_initpki
-	Enter PEM pass phrase: 123456										# 输入私钥密码
-	Verifying - Enter PEM pass phrase: 123456							# 重新输入一次密码
-	Common Name (eg: your user,host,or server name) [Easy-RSA CA]: 		# 输入一个CA名称。可以不用输入，直接回车
-	Enter pass phrase for /etc/openvpn/pki/private/ca.key: 123456		# 输入刚才设置的私钥密码，完成后在输入一次
+[root@k8s-master openvpn]# docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 ovpn_initpki
+
+init-pki complete; you may now create a CA or requests.
+Your newly created PKI dir is: /etc/openvpn/pki
+
+
+Using SSL: openssl OpenSSL 1.1.1g  21 Apr 2020 (Library: OpenSSL 1.1.1d  10 Sep 2019)
+
+Enter New CA Key Passphrase: 123456  # 跟证书密码
+Re-Enter New CA Key Passphrase: 123456  # 跟证书密码
+Generating RSA private key, 2048 bit long modulus (2 primes)
+...............................................+++++
+...................................+++++
+e is 65537 (0x010001)
+Can't load /etc/openvpn/pki/.rnd into RNG
+140461893008712:error:2406F079:random number generator:RAND_load_file:Cannot open file:crypto/rand/randfile.c:98:Filename=/etc/openvpn/pki/.rnd
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Common Name (eg: your user, host, or server name) [Easy-RSA CA]: # 回车
+
+CA creation complete and you may now import and sign cert requests.
+Your new CA certificate file for publishing is at:
+/etc/openvpn/pki/ca.crt
+
+
+Using SSL: openssl OpenSSL 1.1.1g  21 Apr 2020 (Library: OpenSSL 1.1.1d  10 Sep 2019)
+Generating DH parameters, 2048 bit long safe prime, generator 2
+This is going to take a long time
+......................................................+...................................................+.....................................................................................................................+......+.........................+................................................................................+.......+.....................................................................................................+......+..........................................................................+.......................................+.............................................................................................................+...............................+........................................................................................................................................................................................................................................+.................................+.........................+......................+..............................................................................+................................................................+.+........+..................................................................................................................................................................................................................................................................+...........................................+..................................................................................................................................................................................................................................................................................................................................................................................................................................................+........................................................................................................................+..................................................+.........................................................................................................................................................+...............................................................................................................................................................+.................................................+.............................................+...+........+........................................................................................+.....................................................+...............................................................................................................+...........................................................................................................................................................+......+.......................+....................................................................................................................+.............................................................+................................................................................................................................................................+......................................+....................+.........................................................................................+..........+.+.................................................+................................................................................................................+................................................................................+.+...................................................+......................................................+...................................................++*++*++*++*
+
+DH parameters of size 2048 created at /etc/openvpn/pki/dh.pem
+
+
+Using SSL: openssl OpenSSL 1.1.1g  21 Apr 2020 (Library: OpenSSL 1.1.1d  10 Sep 2019)
+Generating a RSA private key
+.......................................................................................................................+++++
+.....................................+++++
+writing new private key to '/etc/openvpn/pki/private/47.120.62.2.key.XXXXoEPaiN'
+-----
+Using configuration from /etc/openvpn/pki/safessl-easyrsa.cnf
+Enter pass phrase for /etc/openvpn/pki/private/ca.key: 123456  # 跟证书密码
+Check that the request matches the signature
+Signature ok
+The Subject's Distinguished Name is as follows
+commonName            :ASN.1 12:'1.1.1.1'
+Certificate is to be certified until Jan  1 05:45:05 2028 GMT (1080 days)
+
+Write out database with 1 new entries
+Data Base Updated
+
+Using SSL: openssl OpenSSL 1.1.1g  21 Apr 2020 (Library: OpenSSL 1.1.1d  10 Sep 2019)
+Using configuration from /etc/openvpn/pki/safessl-easyrsa.cnf
+Enter pass phrase for /etc/openvpn/pki/private/ca.key: 123456  # 跟证书密码
+
+An updated CRL has been created.
+CRL file: /etc/openvpn/pki/crl.pem
 ```
 
 ### 5. 生成客户端证书
@@ -130,31 +200,59 @@ $ docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 ovpn_in
 ```sh
 # vpn-client 证书名称
 # nopass 表示不使用密码，去掉表示使用密码
-$ docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa build-client-full vpn-client nopass
+[root@k8s-master openvpn]# docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa build-client-full vpn-client nopass
 	Enter pass phrase for /etc/openvpn/pki/private/ca.key: 123456		# 输入刚才设置的密码
+
+# 以下表示客户端登陆时需要输入客户端证书的密码
+[root@k8s-master openvpn]# docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa build-client-full vpn-client
+
+Using SSL: openssl OpenSSL 1.1.1g  21 Apr 2020 (Library: OpenSSL 1.1.1d  10 Sep 2019)
+Generating a RSA private key
+...............................................................+++++
+...............+++++
+writing new private key to '/etc/openvpn/pki/private/vpn-client.key.XXXXCphCkK'
+Enter PEM pass phrase: 654321              # 输入客户端证书登陆密码
+Verifying - Enter PEM pass phrase: 654321        # 输入客户端证书登陆密码
+-----
+Using configuration from /etc/openvpn/pki/safessl-easyrsa.cnf
+Enter pass phrase for /etc/openvpn/pki/private/ca.key:      # 输入 ca 证书密码
+Check that the request matches the signature
+Signature ok
+The Subject's Distinguished Name is as follows
+commonName            :ASN.1 12:'vpn-client'
+Certificate is to be certified until Jan  1 02:18:50 2028 GMT (1080 days)
+
+Write out database with 1 new entries
+Data Base Updated
 ```
 
 ### 6. 导出客户端配置
 
 ```sh
-$ docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_getclient vpn-client > $(pwd)/conf/vpn-client.ovpn
+[root@k8s-master openvpn]# mkdir client
+[root@k8s-master openvpn]# docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_getclient vpn-client > $(pwd)/client/vpn-client.ovpn
+[root@k8s-master openvpn]# ls -l client/
+total 8
+-rw-r--r-- 1 root root 5091 Jan 16 10:21 vpn-client.ovpn
 ```
 
 ### 7. 启动openvpn
 
 ```sh
-$ docker run -dit --name openvpn -v /etc/localtime:/etc/localtime -v $(pwd):/etc/openvpn -p 1194:1194/tcp --cap-add=NET_ADMIN --restart=always zhentianxiang/openvpn:2.4.8
+[root@k8s-master openvpn]# docker run -dit --name openvpn -v /etc/localtime:/etc/localtime -v $(pwd):/etc/openvpn -p 1194:1194/tcp --cap-add=NET_ADMIN --restart=always zhentianxiang/openvpn:2.4.8
 ```
+
 ### 8. 用户管理
 
 #### 1.1 添加用户
 
 ```sh
 #!/bin/bash
+mkdir -p client
 read -p "please your username: " NAME
-# 需要密码验证就把 nopass 去掉
-docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa build-client-full $NAME nopass
-docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_getclient $NAME > $(pwd)/conf/"$NAME".ovpn
+docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa build-client-full $NAME
+docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_getclient $NAME > $(pwd)/client/"$NAME".ovpn
+sed -i "s/redirect-gateway def1//g" client/"$NAME".ovpn
 docker restart openvpn
 ```
 
@@ -168,93 +266,216 @@ docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa g
 docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 rm -f /etc/openvpn/pki/reqs/"DNAME".req
 docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 rm -f /etc/openvpn/pki/private/"DNAME".key
 docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 rm -f /etc/openvpn/pki/issued/"DNAME".crt
+rm -rf client/"$NAME".ovpn
 docker restart openvpn
 ```
 
 **添加用户**
 
 ```sh
-$ ./add_user.sh	#  输入要添加的用户名，回车后输入刚才创建的私钥密码
+[root@k8s-master openvpn]# ./add_user.sh	#  输入要添加的用户名，回车后输入刚才创建的私钥密码
 ```
 
 ### 9. 客户端文件配置
 
 
 ```sh
-# 编辑 ovpn 文件，添加下面两行，第一行是拒绝服务端下发的路由配置，第二行是设定服务器短的路由
-# 比如服务器端内网地址192.168.1.0网段
-route-nopull
-route 192.168.1.0 255.255.255.0 vpn_gateway
-
+[root@k8s-master openvpn]# vim client/vpn-client.ovpn
 # 最后一行删除 `redirect-gateway def1` 这个配置是截取当前主机所有路由，并且全部转发到 openvpn 网关上
+
+# 如果你的 openvpn 不是用的 1194 端口，接的修改你的客户端证书文件里面的端口
 ```
 
 ### 10. 静态路由配置
 
+由于我们是在docker中启动的服务，难免会遇到一些网络问题，我就把我遇到的写到这里
+
 ```sh
-# 宿主机添加静态路由，使其宿主机能够访问到 vpn 的网段（172.17.0.3）是openvpn容器IP
-$ ip route add 192.168.255.0/24 via 172.17.0.3
+# 1. 客户端连接登陆后无法 ping 通局域网地址，只能 ping 通 vpn 提供的 TUN0 网卡的地址，解决办法如下
 
-# 局域网内其他机器添加静态路由访问 vpn 的网段（注意，这条指令是在其他的机器上配置的）
-$ ip route add 192.168.255.0/24 via 192.168.1.16
+# 开启 ipv4 net 转发
+[root@k8s-master openvpn]# sysctl -w net.ipv4.ip_forward=1
+# 允许所有目标（更通用的 MASQUERADE）,使其客户端能访问到openvpn服务端所在的内网中所有局域网地址,如果最限制可以使用 -d 指局域网地址
+[root@k8s-master openvpn]# iptables -t nat -A POSTROUTING -s 10.100.255.0/24 -j MASQUERADE
+# 增加一条静态路由 172.17.0.2 是 openvpn 容器地址
+[root@k8s-master openvpn]# ip route add 10.100.255.0/24 via 172.17.0.2 dev docker0
+```
 
-# 宿主机添加 iptables 规则允许来自外部的流量通过防火墙，以确保它可以流经 Docker 网络
-$iptables -A FORWARD -i eth0 -o docker0 -j ACCEPT
-$iptables -A FORWARD -i docker0 -o eth0 -j ACCEPT
+```sh
+# 2. 局域网内的机器想要访问 vpn 客户端地址配置如下
+
+# 局域网内其他机器添加静态路由访问 vpn 的网段（注意，这条指令是在其他的机器上配置的）192.168.1.16 是宿主机本机IP
+[root@k8s-master openvpn]# ip route add 192.168.255.0/24 via 192.168.1.16
+
+# openvpn 宿主机添加 iptables 规则允许来自外部的流量通过防火墙，以确保它可以流经 Docker 网络
+[root@k8s-master openvpn]# iptables -A FORWARD -i eth0 -o docker0 -j ACCEPT
+[root@k8s-master openvpn]# iptables -A FORWARD -i docker0 -o eth0 -j ACCEPT
 ```
 
 ### 11. 监控脚本
 
 用来监控容器是否退出，如果退出则重新启动容器
+
+```python
+$ cat alert.py 
+import smtplib
+import os
+import argparse
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.header import Header
+
+def send_alert_email(subject, body):
+    """发送告警邮件"""
+    # 从环境变量获取配置
+    sender_email = os.getenv("SENDER_EMAIL", "xiahediyijun@163.com")
+    sender_name = os.getenv("SENDER_NAME", "OpenVPN 监控告警")
+    receiver_email = os.getenv("RECEIVER_EMAIL", "2099637909@qq.com")
+    password = os.getenv("EMAIL_PASSWORD", "xxxxxxxxx")
+    smtp_server = os.getenv("SMTP_SERVER", "smtp.163.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "465"))
+
+    # 构建邮件内容
+    msg = MIMEMultipart()
+    msg['From'] = Header(f"{sender_name} <{sender_email}>", 'utf-8')
+    msg['To'] = receiver_email
+    msg['Subject'] = Header(subject, 'utf-8')
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+    try:
+        # 连接 SMTP 服务器并发送
+        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+            server.login(sender_email, password)
+            server.sendmail(sender_email, [receiver_email], msg.as_string())
+            print(f"[ALERT] 告警邮件发送成功: {subject}")
+            return True
+    except Exception as e:
+        print(f"[ALERT] 告警邮件发送失败: {e}")
+        return False
+
+def parse_arguments():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(description='发送告警邮件工具')
+    parser.add_argument('--alert', nargs=2, metavar=('SUBJECT', 'BODY'), 
+                       required=True, help='发送告警邮件的主题和内容')
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    send_alert_email(args.alert[0], args.alert[1])
+```
+
+邮件发送叫脚本需要 python3.0 以上支持
+
 ```sh
 $ cat monitor_openvpn.sh 
 #!/bin/bash
 
-# 设置日志文件路径
+# 配置日志文件和检查间隔
 LOG_FILE="/var/log/monitor_openvpn_container.log"
-
-# 设置检查间隔（秒）
-CHECK_INTERVAL=300
-
-# 容器名称或ID的搜索模式
+CHECK_INTERVAL=60
 CONTAINER_NAME_PATTERN="openvpn"
+PYTHON_SCRIPT="/data/docker-app/openvpn/monitor/alert.py"  # 替换为真实路径
+ALERT_COUNT=0  # 告警触发次数
 
-# 函数：记录日志
+# 通过环境变量传递密码（更安全）
+export EMAIL_PASSWORD="xxxxxxxxxxxx"
+
+# 日志记录函数
 function log_message {
-    echo "$(date): $1" >> "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): $1" >> "$LOG_FILE"
 }
 
-# 无限循环检查容器状态
+# 告警发送函数
+function send_alert {
+    local subject="$1"
+    local body="$2"
+    log_message "触发告警: $subject - $body"
+    python3.9 "$PYTHON_SCRIPT" --alert "$subject" "$body" >> "$LOG_FILE" 2>&1
+}
+
+# 获取容器的最后 20 行日志
+function get_container_logs {
+    local container_name=$1
+    docker logs --tail 20 "$container_name"
+}
+
+# 获取容器的详细信息
+function get_container_info {
+    local container_name=$1
+    CONTAINER_IMAGE=$(docker inspect --format '{{.Config.Image}}' "$container_name")
+    CONTAINER_NAME=$(docker inspect --format '{{.Name}}' "$container_name" | sed 's/\///')
+}
+
+# 主监控循环
 while true; do
-    # 使用docker ps -qf来查找匹配的容器ID
+    # 获取容器的 ID
     CONTAINER_ID=$(docker ps -qf "name=$CONTAINER_NAME_PATTERN")
 
-    # 如果找不到容器ID，则容器不存在
     if [ -z "$CONTAINER_ID" ]; then
-        log_message "$CONTAINER_NAME_PATTERN 容器不存在，正在重启..."
+        log_message "容器不存在，尝试重启..."
 
-        # 重启容器
-        docker restart "$CONTAINER_NAME_PATTERN" || {
-            log_message "重启 $CONTAINER_NAME_PATTERN 容器失败"
-            sleep $CHECK_INTERVAL
-            continue
-        }
-
-        # 等待一小段时间以确保容器已经启动
-        sleep 5
-
-        # 验证容器是否成功启动
-        CONTAINER_ID=$(docker ps -qf "name=$CONTAINER_NAME_PATTERN")
-        if [ -n "$CONTAINER_ID" ]; then
-            log_message "$CONTAINER_NAME_PATTERN 容器已启动"
+        # 尝试重启容器
+        if ! docker restart "$CONTAINER_NAME_PATTERN"; then
+            get_container_info "$CONTAINER_NAME_PATTERN"
+            LOGS=$(get_container_logs "$CONTAINER_NAME_PATTERN")
+            ALERT_COUNT=$((ALERT_COUNT + 1))
+            send_alert "OpenVPN 容器重启失败" "
+            时间: $(date '+%Y-%m-%d %H:%M:%S')
+            触发次数: $ALERT_COUNT
+            容器名称: $CONTAINER_NAME
+            容器镜像: $CONTAINER_IMAGE
+            容器日志: 
+            $LOGS"
         else
-            log_message "$CONTAINER_NAME_PATTERN 容器启动失败"
+            # 容器重启后等待 5 秒，检查容器是否成功启动
+            sleep 5
+            CONTAINER_ID=$(docker ps -qf "name=$CONTAINER_NAME_PATTERN")
+
+            if [ -z "$CONTAINER_ID" ]; then
+                get_container_info "$CONTAINER_NAME_PATTERN"
+                LOGS=$(get_container_logs "$CONTAINER_NAME_PATTERN")
+                ALERT_COUNT=$((ALERT_COUNT + 1))
+                send_alert "OpenVPN 容器重启失败" "
+                时间: $(date '+%Y-%m-%d %H:%M:%S')
+                触发次数: $ALERT_COUNT
+                容器名称: $CONTAINER_NAME
+                容器镜像: $CONTAINER_IMAGE
+                容器日志: 
+                $LOGS"
+            else
+                get_container_info "$CONTAINER_NAME_PATTERN"
+                LOGS=$(get_container_logs "$CONTAINER_NAME_PATTERN")
+                ALERT_COUNT=$((ALERT_COUNT + 1))
+                send_alert "OpenVPN 容器重启成功" "
+                时间: $(date '+%Y-%m-%d %H:%M:%S')
+                触发次数: $ALERT_COUNT
+                容器名称: $CONTAINER_NAME
+                容器镜像: $CONTAINER_IMAGE
+                容器日志: 
+                $LOGS"
+            fi
+        fi
+    else
+        # 获取容器状态信息
+        CONTAINER_STATUS=$(docker inspect --format '{{.State.Status}}' "$CONTAINER_ID")
+
+        if [ "$CONTAINER_STATUS" == "restarting" ]; then
+            get_container_info "$CONTAINER_NAME_PATTERN"
+            LOGS=$(get_container_logs "$CONTAINER_NAME_PATTERN")
+            ALERT_COUNT=$((ALERT_COUNT + 1))
+            send_alert "OpenVPN 容器重启" "
+            时间: $(date '+%Y-%m-%d %H:%M:%S')
+            触发次数: $ALERT_COUNT
+            容器名称: $CONTAINER_NAME
+            容器镜像: $CONTAINER_IMAGE
+            容器日志: 
+            $LOGS"
         fi
     fi
 
-    # 等待下一个检查间隔
     sleep $CHECK_INTERVAL
-done 2>&1 >> "$LOG_FILE" # 将所有输出（包括标准输出和标准错误）重定向到日志文件
+done
 
 $ vim /etc/systemd/system/monitor_openvpn.service
 
@@ -285,7 +506,15 @@ $ systemctl status monitor_openvpn.service
              ├─1373453 /bin/bash /home/docker-app/openvpn/monitor_openvpn.sh
              └─1373484 sleep 10
 ```
+手动触发测试
 
+![](/images/posts/Linux-Kubernetes/2023-09-03-Docker容器部署openVPN/1.png)
+
+![](/images/posts/Linux-Kubernetes/2023-09-03-Docker容器部署openVPN/2.png)
+
+真实效果如下
+
+![](/images/posts/Linux-Kubernetes/2023-09-03-Docker容器部署openVPN/3.png)
 
 ## 三、客户端使用
 
@@ -313,4 +542,3 @@ $ systemctl status monitor_openvpn.service
 4. 在iOS设备上选择“打开方式”为“OpenVPN Connect”
 5. 输入用户名和密码
 6. 点击"连接",即可开始使用OpenVPN连接
-

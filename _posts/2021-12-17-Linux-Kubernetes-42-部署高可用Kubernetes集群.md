@@ -612,10 +612,14 @@ Created symlink from /etc/systemd/system/multi-user.target.wants/etcd.service to
 ### 6. 验证集群状态
 
 ```sh
+[root@k8s-cluster-master01 ~]# vim /etcdctl-wrapper.sh
+#!/bin/bash
+/opt/etcd/bin/etcdctl --cacert=/opt/etcd/ssl/ca.pem --cert=/opt/etcd/ssl/server.pem --key=/opt/etcd/ssl/server-key.pem --endpoints="https://192.168.1.124:2379,https://192.168.1.132:2379,https://192.168.1.126:2379" "$@"
+
 [root@k8s-cluster-master01 ~]# netstat -lntp |grep etcd
 tcp        0      0 192.168.1.124:2379      0.0.0.0:*               LISTEN      932/etcd            
 tcp        0      0 192.168.1.124:2380      0.0.0.0:*               LISTEN      932/etcd
-[root@k8s-cluster-master01 ~]# /opt/etcd/bin/etcdctl --cacert=/opt/etcd/ssl/ca.pem --cert=/opt/etcd/ssl/server.pem --key=/opt/etcd/ssl/server-key.pem --endpoints="https://192.168.1.124:2379,https://192.168.1.132:2379,https://192.168.1.126:2379" endpoint health --write-out=table
+[root@k8s-cluster-master01 ~]# /etcdctl-wrapper.sh endpoint health --write-out=table
 +----------------------------+--------+-------------+-------+
 |          ENDPOINT          | HEALTH |    TOOK     | ERROR |
 +----------------------------+--------+-------------+-------+
@@ -623,7 +627,7 @@ tcp        0      0 192.168.1.124:2380      0.0.0.0:*               LISTEN      
 | https://192.168.1.126:2379 |   true | 21.690739ms |       |
 | https://192.168.1.132:2379 |   true | 22.971063ms |       |
 +----------------------------+--------+-------------+-------+
-[root@k8s-cluster-master01 ~]# /opt/etcd/bin/etcdctl --cacert=/opt/etcd/ssl/ca.pem --cert=/opt/etcd/ssl/server.pem --key=/opt/etcd/ssl/server-key.pem --endpoints="https://192.168.1.124:2379,https://192.168.1.132:2379,https://192.168.1.126:2379" member list -w table
+[root@k8s-cluster-master01 ~]# /etcdctl-wrapper.sh member list -w table
 ```
 
 kubeadm 安装的集群，etcdctl命令如下
@@ -679,27 +683,28 @@ kubeadm 安装的集群，etcdctl命令如下
 
 ```sh
 [root@k8s-cluster-master01 ~]# wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
-[root@k8s-cluster-master01 ~]# yum -y install docker-ce-19.03.15 docker-ce-cli-19.03.15 containerd.io
+[root@k8s-cluster-master01 ~]# yum -y install docker-ce-20.10.0 docker-ce-cli-20.10.0 containerd.io
 [root@k8s-cluster-master01 ~]# systemctl enable docker --now
 [root@k8s-cluster-master01 ~]# vim /etc/docker/daemon.json
 # docker存储目录根据实际情况修改
 {
-    "graph": "/var/lib/docker",
-    "registry-mirrors": [
-      "https://hub-mirror.c.163.com",
-      "https://mirror.baidubce.com",
-      "https://docker.mirrors.ustc.edu.cn"
-    ],
-    "insecure-registries": [
-        "harbor.demo.com"
-    ],
-    "live-restore": true,
-    "exec-opts": ["native.cgroupdriver=systemd"],
-    "log-driver": "json-file",
-    "log-opts": {
-        "max-size": "100m",
-        "max-file": "10"
-    }
+  "data-root": "/var/lib/docker",
+  "registry-mirrors": [
+      "https://docker.m.daocloud.io",
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com"
+  ],
+  "insecure-registries": [
+      "harbor.demo.com"
+  ],
+  "live-restore": true,
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "10"
+  }
 }
 [root@k8s-cluster-master01 ~]# systemctl daemon-reload
 [root@k8s-cluster-master01 ~]# systemctl restart docker
@@ -711,28 +716,28 @@ kubeadm 安装的集群，etcdctl命令如下
 ```
 ```#!/bin/sh
 {
-    "runtimes": {
-        "nvidia": {
-            "path": "/usr/bin/nvidia-container-runtime",
-            "runtimeArgs": []
-        }
-    },
-    "graph": "/var/lib/docker",
-    "default-runtime": "nvidia",
-    "registry-mirrors": [
-        "https://registry.docker-cn.com",
-        "https://docker.mirrors.ustc.edu.cn"
-    ],
-    "insecure-registries": [
-        "harbor.hyper.com"
-    ],
-    "live-restore": true,
-    "exec-opts": ["native.cgroupdriver=systemd"],
-    "log-driver": "json-file",
-    "log-opts": {
-        "max-size": "100m",
-        "max-file": "10"
-    }
+  "runtimes": {
+      "nvidia": {
+          "path": "/usr/bin/nvidia-container-runtime",
+          "runtimeArgs": []
+      }
+  },
+  "data-root": "/var/lib/docker",
+  "registry-mirrors": [
+      "https://registry-1.docker.io",
+      "https://production.cloudflare.docker.com",
+      "https://gupqwwvu.mirror.aliyuncs.com"
+  ],
+  "insecure-registries": [
+      "harbor.demo.com"
+  ],
+  "live-restore": true,
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "10"
+  }
 }
 ```
 

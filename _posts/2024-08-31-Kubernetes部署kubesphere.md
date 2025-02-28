@@ -697,12 +697,17 @@ metadata:
 
 ```sh
 # 4 . kubesphere的dashboard的图表出不来，记来要修改prometheusrules.monitoring.coreos.com，因为很多指标都是通过record来计算获取
-#获取kube-promethues-stack与promethesrules和servicemonitor的关联label
+# 获取kube-promethues-stack与promethesrules和servicemonitor的关联label
+# 注意：helm 部署的和 yaml 部署 label 的 key value 值可能不一样
 [root@k8s-master01 kube-prometheus-stack]# kubectl get prometheus -n monitoring kube-prometheus-stack-prometheus  -o yaml
-
+...........................................
+  labels:
+    release: kube-prometheus-stack       # 使用此 label 与 promethes 资源 关联
+...........................................
   ruleSelector:
     matchLabels:
       release: kube-prometheus-stack     # 使用此 label 与 promethesrules 关联
+...........................................
   serviceMonitorSelector:
     matchLabels:
       release: kube-prometheus-stack     # 使用此 label 与 servicemonitor 关联

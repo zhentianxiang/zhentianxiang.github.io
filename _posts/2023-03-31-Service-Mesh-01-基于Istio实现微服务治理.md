@@ -140,7 +140,8 @@ $ istioctl manifest generate --set profile=demo | kubectl delete -f -
 资源清单
 
 ```yaml
-front-tomcat-dpl-v1.yaml
+$ vim front-tomcat-dpl-v1.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -164,7 +165,9 @@ spec:
       containers:
       - image: consol/tomcat-7.0:latest
         name: front-tomcat
-bill-service-dpl-v1.yaml
+        
+$ vim bill-service-dpl-v1.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -189,7 +192,9 @@ spec:
       - image: nginx:alpine
         name: bill-service
         command: ["/bin/sh", "-c", "echo 'this is bill-service-v1'>/usr/share/nginx/html/index.html;nginx -g 'daemon off;'"]
-bill-service-svc.yaml
+
+$vim bill-service-svc.yaml
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -230,9 +235,11 @@ this is bill-service-v1
 
 资源清单
 
-新增`bill-service-dpl-v2.yaml`
+新增`bill-service-dpl-v2.yaml` 由于这里使用`service: bill-service`和上面的一样，也就是请求 service 的时候默认会各自 50% 概率流量
 
 ```yaml
+$ vim bill-service-dpl-v2.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -285,8 +292,13 @@ $ istioctl kube-inject -f front-tomcat-dpl-v1.yaml|kubectl apply -f -
 
 两个新的资源类型：`VirtualService`和`DestinationRule`
 
+virtualservice：虚拟服务，可以想象为一个 ingress 规则，将符合规则的请求分发至 destinationrule
+
+destinationrule：目标规则，用于对 pod 流量进行编组,也就是说根据 service 的 labels 进行一个流量的接入，前面制定了规则，后面就要运用规则
+
 ```yaml
-bill-service-destnation-rule.yaml
+$ vim bill-service-destnation-rule.yaml
+
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
@@ -301,7 +313,9 @@ spec:
   - name: v2
     labels:
       version: v2
-bill-service-virtualservice.yaml
+
+$ vim bill-service-virtualservice.yaml
+
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
@@ -533,95 +547,164 @@ Istio 给应用 Pod 注入的配置主要包括：
   Init 容器的启动入口是 `istio-iptables` 命令行，该命令行工具的用法如下：
 
   ```bash
-  $ istio-iptables [flags]
-    -p: 指定重定向所有 TCP 出站流量的 sidecar 端口（默认为 $ENVOY_PORT = 15001）
-    -m: 指定入站连接重定向到 sidecar 的模式，“REDIRECT” 或 “TPROXY”（默认为 $ISTIO_INBOUND_INTERCEPTION_MODE)
-    -b: 逗号分隔的入站端口列表，其流量将重定向到 Envoy（可选）。使用通配符 “*” 表示重定向所有端口。为空时表示禁用所有入站重定向（默认为 $ISTIO_INBOUND_PORTS）
-    -d: 指定要从重定向到 sidecar 中排除的入站端口列表（可选），以逗号格式分隔。使用通配符“*” 表示重定向所有入站流量（默认为 $ISTIO_LOCAL_EXCLUDE_PORTS）
-    -o：逗号分隔的出站端口列表，不包括重定向到 Envoy 的端口。
-    -i: 指定重定向到 sidecar 的 IP 地址范围（可选），以逗号分隔的 CIDR 格式列表。使用通配符 “*” 表示重定向所有出站流量。空列表将禁用所有出站重定向（默认为 $ISTIO_SERVICE_CIDR）
-    -x: 指定将从重定向中排除的 IP 地址范围，以逗号分隔的 CIDR 格式列表。使用通配符 “*” 表示重定向所有出站流量（默认为 $ISTIO_SERVICE_EXCLUDE_CIDR）。
-    -k：逗号分隔的虚拟接口列表，其入站流量（来自虚拟机的）将被视为出站流量。
-    -g：指定不应用重定向的用户的 GID。(默认值与 -u param 相同)
-    -u：指定不应用重定向的用户的 UID。通常情况下，这是代理容器的 UID（默认值是 1337，即 istio-proxy 的 UID）。
-    -z: 所有进入 pod/VM 的 TCP 流量应被重定向到的端口（默认 $INBOUND_CAPTURE_PORT = 15006）。
+     istio-iptables: 这是执行实际 iptables 配置的命令。Istio 使用它来配置容器的网络流量管理。
+
+     -p 15001: 这个选项指定了 Istio 代理（Sidecar）监听的端口。15001 是 Envoy 代理的端口，用于与应用程序容器之间进行通信。
+
+     -z 15006: 这个选项指定了 Istio 代理用于与控制面进行通信的端口，15006 通常用于与 Istio 控制平面的连接。
+
+     -u 1337: 这个参数指定了代理进程的用户 ID (UID)。在这里，1337 是运行 istio-init 初始化容器时的用户 ID。
+
+     -m REDIRECT: -m 参数指定了 iptables 的规则操作类型。REDIRECT 意味着将流量重定向到本地的指定端口，以便通过 Istio Sidecar 代理处理。即流量会被引导到 15001 端口。
+
+     -i '*': -i 参数指定了 iptables 的输入接口，'*' 表示匹配所有网络接口。所有的入站流量都会受到影响。
+
+     -x "": 这个选项通常用于指定排除的主机 IP 地址或子网，在这个命令中是空字符串，表示没有指定特定的排除项，所有流量都可能会经过代理。
+
+     -b '*': -b 参数指定了匹配的输出接口，'*' 表示所有输出流量都会经过这个规则。
+
+     -d 15090,15021,15020: -d 参数指定了要重定向的目标端口。这些端口通常是 Istio 所需的端口：
+
+     15090 用于 Istio 的控制面通信。
+     15021 是用于 Envoy 健康检查的端口。
+     15020 是用于 Istio 的管理端口。
   ```
 
   以上传入的参数都会重新组装成 [`iptables` ](https://wangchujiang.com/linux-command/c/iptables.html)规则，关于 Istio 中端口用途请参考 [Istio 官方文档](https://istio.io/latest/docs/ops/deployment/requirements/)。
 
   这条启动命令的作用是：
 
-  综合起来，这个 iptables 规则将匹配从 15001 端口发出、目标端口为 15006、目标用户为 1337、目标端口为 15090、15021 或 15020 的流量，并对匹配的流量进行重定向，将其转发到 15006 端口上。这通常用于 Istio 中的流量管理和代理重定向，以便实现 Istio 的功能，如流量控制、故障注入等。
+  istio-init 容器执行的命令配置了 iptables 规则，它会将容器中的流量重定向到 Istio Sidecar 代理（即 Envoy），使得所有进出容器的流量都能经过 Istio 进行管理、监控和代理。这是 Istio 为了实施流量管理、监控、安全策略等功能所必需的初始化步骤。
 
-  该容器存在的意义就是让 sidecar 代理可以拦截pod所有的入站（inbound）流量以及出站（outbound）流量，这样就可以实现由sidecar容器来接管流量，进尔实现流量管控。
 
-  因为 Init 容器初始化完毕后就会自动终止，因为我们无法登陆到容器中查看 iptables 信息，但是 Init 容器初始化结果会保留到应用容器和 sidecar 容器中。
+**来认识一下isstio-init容器是如何通过iptables规则进行拦截流量的**
 
-  ```sh
-  # 查看front-tomcat服务的istio-proxy容器的id
-  $ docker ps |grep front-tomcat
-  d02fa8217f2f        consol/tomcat-7.0                                   "/bin/sh -c /opt/tom…"   2 days ago          Up 2 days
-                                                k8s_front-tomcat_front-tomcat-v1-78cf497978-ppwwk_istio-demo_f03358b1-ed17-4811-ac7e-9f70e6bd797b_0
-  
-  # 根据容器id获取front-tomcat容器在宿主机中的进程
-  $ docker inspect d02fa8217f2f|grep -i pid
-              "Pid": 28834,
-              "PidMode": "",
-              "PidsLimit": null,
-  # 进入该进程的网络命名空间
-  $ nsenter -n --target 28834
-  # 查看命名空间的iptables规则
-  $ iptables -t nat -vnL
-  # PREROUTING 链：用于目标地址转换（DNAT），将所有入站 TCP 流量跳转到 ISTIO_INBOUND 链上。
-  Chain PREROUTING (policy ACCEPT 148 packets, 8880 bytes)
-   pkts bytes target     prot opt in     out     source               destination
-    148  8880 ISTIO_INBOUND  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0
-  
-  # INPUT 链：处理输入数据包，非 TCP 流量将继续 OUTPUT 链。
-  Chain INPUT (policy ACCEPT 148 packets, 8880 bytes)
-   pkts bytes target     prot opt in     out     source               destination
-  
-  # OUTPUT 链：将所有出站数据包跳转到 ISTIO_OUTPUT 链上。
-  Chain OUTPUT (policy ACCEPT 46 packets, 3926 bytes)
-   pkts bytes target     prot opt in     out     source               destination
-      8   480 ISTIO_OUTPUT  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0
-  # POSTROUTING 链：所有数据包流出网卡时都要先进入POSTROUTING 链，内核根据数据包目的地判断是否需要转发出去，我们看到此处未做任何处理。
-  Chain POSTROUTING (policy ACCEPT 46 packets, 3926 bytes)
-   pkts bytes target     prot opt in     out     source               destination
-  
-  # ISTIO_INBOUND 链：将所有入站流量重定向到 ISTIO_IN_REDIRECT 链上，目的地为 15090，15020，15021端口的流量除外，发送到以上两个端口的流量将返回 iptables 规则链的调用点，即 PREROUTING 链的后继 POSTROUTING。
-  Chain ISTIO_INBOUND (1 references)
-   pkts bytes target     prot opt in     out     source               destination
-      0     0 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15008
-      0     0 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:22
-      0     0 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15090
-    143  8580 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15021
-      5   300 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15020
-      0     0 ISTIO_IN_REDIRECT  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0
-  
-  # ISTIO_IN_REDIRECT 链：将所有入站流量跳转到本地的 15006 端口，至此成功的拦截了流量到sidecar中。
-  Chain ISTIO_IN_REDIRECT (3 references)
-   pkts bytes target     prot opt in     out     source               destination
-      0     0 REDIRECT   tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            redir ports 15006
-  
-  # ISTIO_OUTPUT 链：选择需要重定向到 Envoy（即本地） 的出站流量，所有非 localhost 的流量全部转发到 ISTIO_REDIRECT。为了避免流量在该 Pod 中无限循环，所有到 istio-proxy 用户空间的流量都返回到它的调用点中的下一条规则，本例中即 OUTPUT 链，因为跳出 ISTIO_OUTPUT 规则之后就进入下一条链 POSTROUTING。如果目的地非 localhost 就跳转到 ISTIO_REDIRECT；如果流量是来自 istio-proxy 用户空间的，那么就跳出该链，返回它的调用链继续执行下一条规则（OUTPUT 的下一条规则，无需对流量进行处理）；所有的非 istio-proxy 用户空间的目的地是 localhost 的流量就跳转到 ISTIO_REDIRECT。
-  Chain ISTIO_OUTPUT (1 references)
-   pkts bytes target     prot opt in     out     source               destination
-      0     0 RETURN     all  --  *      lo      127.0.0.6            0.0.0.0/0
-      0     0 ISTIO_IN_REDIRECT  all  --  *      lo      0.0.0.0/0           !127.0.0.1            owner UID match 1337
-      0     0 RETURN     all  --  *      lo      0.0.0.0/0            0.0.0.0/0            ! owner UID match 1337
-      8   480 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            owner UID match 1337
-      0     0 ISTIO_IN_REDIRECT  all  --  *      lo      0.0.0.0/0           !127.0.0.1            owner GID match 1337
-      0     0 RETURN     all  --  *      lo      0.0.0.0/0            0.0.0.0/0            ! owner GID match 1337
-      0     0 RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            owner GID match 1337
-      0     0 RETURN     all  --  *      *       0.0.0.0/0            127.0.0.1
-      0     0 ISTIO_REDIRECT  all  --  *      *       0.0.0.0/0            0.0.0.0/0
-  
-  # ISTIO_REDIRECT 链：将所有流量重定向到 Sidecar（即本地） 的 15001 端口。
-  Chain ISTIO_REDIRECT (1 references)
-   pkts bytes target     prot opt in     out     source               destination
-      0     0 REDIRECT   tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            redir ports 15001
-  ```
+查看 `front-tomcat` 服务的 `istio-proxy` 容器的 ID
+
+```sh
+$ docker ps |grep front-tomcat
+d02fa8217f2f        consol/tomcat-7.0                                   "/bin/sh -c /opt/tom…"   2 days ago          Up 2 days
+                                              k8s_front-tomcat_front-tomcat-v1-78cf497978-ppwwk_istio-demo_f03358b1-ed17-4811-ac7e-9f70e6bd797b_0
+```
+
+获取容器的进程信息
+
+```sh
+$ docker inspect -f '{{.State.Pid}}' d02fa8217f2f
+```
+
+进入该进程的网络命名空间
+
+```sh
+$ nsenter -n --target 28834
+```
+
+查看命名空间的 iptables 规则
+
+```sh
+$ iptables -t nat -vnL
+```
+
+**PREROUTING 链**：
+
+用于目标地址转换（DNAT），将所有入站 TCP 流量重定向到 `ISTIO_INBOUND` 链。
+**说明**：所有进入 Pod 的流量首先会进入 PREROUTING 链，匹配到此规则后会被转发到 `ISTIO_INBOUND` 链。
+
+```sh
+Chain PREROUTING (policy ACCEPT 148 packets, 8880 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+  148  8880 ISTIO_INBOUND  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0
+```
+
+**INPUT 链**：
+
+处理输入数据包，非 TCP 流量继续流向 OUTPUT 链。
+**说明**：这条规则没有指定重定向流量，因此未做具体操作。
+
+```sh
+Chain INPUT (policy ACCEPT 148 packets, 8880 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+```
+
+**OUTPUT 链**：
+
+所有出站 TCP 流量被重定向到 `ISTIO_OUTPUT` 链。
+**说明**：所有出站流量首先进入 OUTPUT 链，然后被重定向到 `ISTIO_OUTPUT` 链，以便进行进一步处理。
+
+```sh
+Chain OUTPUT (policy ACCEPT 46 packets, 3926 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+    8   480 ISTIO_OUTPUT  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0
+```
+
+**POSTROUTING 链**：
+
+用于处理出站流量的地址转换（SNAT），在这个链上没有特定规则。
+**说明**：POSTROUTING 链的作用通常是处理 NAT 后的流量，在这里没有做处理，默认允许所有流量流出。
+
+```sh
+Chain POSTROUTING (policy ACCEPT 46 packets, 3926 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+```
+
+**ISTIO_INBOUND 链**：
+
+将所有入站流量重定向到 `ISTIO_IN_REDIRECT` 链，**但会排除目标端口为** `15090`、`15021`、`15020` 的流量，这些流量不会被重定向，而是返回到原始调用点。
+**说明**：此链主要用于决定是否将流量引导到 `ISTIO_IN_REDIRECT` 链，排除特定端口流量（通常是 Istio 本身所需的端口，如控制面和健康检查端口）。
+
+```sh
+Chain ISTIO_INBOUND (1 references)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15008
+    0     0 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:22
+    0     0 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15090
+  143  8580 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15021
+    5   300 RETURN     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            tcp dpt:15020
+    0     0 ISTIO_IN_REDIRECT  tcp  --  *      *       0.0.0.0/0            0.0.0.0/0
+```
+
+**ISTIO_IN_REDIRECT 链**：
+ 
+将所有匹配的入站流量重定向到本地的 `15006` 端口，流量随后会被送到 Istio 代理（Sidecar）。
+**说明**：此规则将所有入站流量重定向到 Istio 代理的端口 `15006`。
+
+```sh
+Chain ISTIO_IN_REDIRECT (3 references)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 REDIRECT   tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            redir ports 15006
+```
+
+**ISTIO_OUTPUT 链**：
+
+对于 `lo`（localhost）接口的流量，只有目标非 `127.0.0.1` 的流量才会被重定向到 `ISTIO_IN_REDIRECT` 链。
+**说明**：该规则会确保所有流量都经过 Istio 代理（Sidecar），并避免本地流量的无限循环。
+
+```sh
+Chain ISTIO_OUTPUT (1 references)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 RETURN     all  --  *      lo      127.0.0.6            0.0.0.0/0
+    0     0 ISTIO_IN_REDIRECT  all  --  *      lo      0.0.0.0/0           !127.0.0.1            owner UID match 1337
+    0     0 RETURN     all  --  *      lo      0.0.0.0/0            0.0.0.0/0            ! owner UID match 1337
+    0     0 ISTIO_IN_REDIRECT  all  --  *      lo      0.0.0.0/0           !127.0.0.1            owner GID match 1337
+```
+
+**ISTIO_REDIRECT 链**：
+
+将所有流量重定向到 Sidecar 代理的 `15001` 端口。
+**说明**：最终所有非本地流量都会被重定向到 Sidecar（Envoy）的 `15001` 端口，以便进行流量代理、监控等处理。
+
+```sh
+Chain ISTIO_REDIRECT (1 references)
+ pkts bytes target     prot opt in     out     source               destination
+    0     0 REDIRECT   tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            redir ports 15001
+```
+
+**总结：**
+
+PREROUTING 链的作用是将所有入站流量引导到 ISTIO_INBOUND 链。
+ISTIO_INBOUND 链排除了某些端口（例如健康检查端口）流量，不重定向这些流量。
+ISTIO_OUTPUT 链对本地流量做了较为复杂的过滤和重定向，以避免无限循环。
+ISTIO_REDIRECT 链最终将流量重定向到 Sidecar 代理的 15001 端口。
 
 ```sh
 $ kubectl -n istio-demo exec -ti front-tomcat-v1-78cf497978-ppwwk -c istio-proxy bash
