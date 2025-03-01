@@ -9,10 +9,57 @@ tags: Linux-网络服务
 
 ## 一、仓库端
 
+在使用apt-mirror工具下载ubuntu20 镜像源导入内网后，apt-get update发现缺少dep11，cnf及binary-i386下的一些索引文件，导致更新失败，无法正常使用，在网上找到了两种方法来解决。
+
+由于apt-mirror在2017年就停止了维护更新，之后出现的ubuntu20和ubuntu22更新了仓库的索引文件，apt-mirror没有办法兼容。所以可以通过修改apt-mirror脚本来下载缺失的文件。
+
+使用管理员权限打开*/usr/bin/apt-mirror*
+
 ### 1. 安装apt-mirror
 
 ```sh
 root@tianxiang:~# apt-get install apt-mirror
+root@tianxiang:~# vim /usr/bin/apt-mirror
+
+420             if ( get_variable("_contents") )
+421             {
+422                 add_url_to_download( $url . $_ . "/Contents-" . $arch . ".gz" );
+423                 add_url_to_download( $url . $_ . "/Contents-" . $arch . ".bz2" );
+424                 add_url_to_download( $url . $_ . "/Contents-" . $arch . ".xz" );
+425             }
+426             add_url_to_download( $url . $_ . "/binary-" . $arch . "/Release" );
+427             add_url_to_download( $url . $_ . "/binary-" . $arch . "/Packages.gz" );
+428             add_url_to_download( $url . $_ . "/binary-" . $arch . "/Packages.bz2" );
+429             add_url_to_download( $url . $_ . "/binary-" . $arch . "/Packages.xz" );
+430             add_url_to_download( $url . $_ . "/cnf/Commands-" . $arch . ".xz" );  # 430 行添加这个
+431             add_url_to_download( $url . $_ . "/i18n/Index" );
+432         }
+433     }
+434     else
+
+462 sub sanitise_uri
+463 {
+464     my $uri = shift;
+465     $uri =~ s[^(\w+)://][];
+466     #$uri =~ s/^([^@]+)?@?// if $uri =~ /@/;       # 注释掉
+467     $uri =~ s&:\d+/&/&;                       # and port information
+468     $uri =~ s/~/\%7E/g if get_variable("_tilde");
+469     return $uri;
+470 }
+```
+
+如果用上述方法还是不管用，可以手动下载同步后缺失的文件
+
+```sh
+$ vi cnf.sh
+#!/bin/bash
+for p in "${1:-focal}"{,-{security,updates}}\
+/{main,restricted,universe,multiverse};do >&2 echo "${p}"
+wget -q -c -r -np -R "index.html*"\
+ "http://archive.ubuntu.com/ubuntu/dists/${p}/cnf/Commands-amd64.xz"
+wget -q -c -r -np -R "index.html*"\
+ "http://archive.ubuntu.com/ubuntu/dists/${p}/cnf/Commands-i386.xz"
+done
 ```
 
 ###  2. 修改apt-mirror配置文件
@@ -43,12 +90,7 @@ set nthreads 20
 set _tilde 0
 #
 ############# end config ##############
-# 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
-deb https://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ bionic-updates main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ bionic-backports main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse
-
+# 阿里云20.04镜像仓库
 deb https://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
 deb https://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
 deb https://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
@@ -357,17 +399,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 COPY sources.list /etc/apt/sources.list
 RUN apt update && \
     apt install -y apt-mirror curl nginx && \
-    apt clean
-
-RUN sed -i '451i\            add_url_to_download( $url . $_ . "/cnf/Commands-" . $arch . ".xz" );' /usr/bin/apt-mirror
-# 创建 apt-mirror 配置文件的默认目录
-RUN mkdir -pv /var/spool/apt-mirror
+    apt clean && \
+    sed -i '451i\            add_url_to_download( $url . $_ . "/cnf/Commands-" . $arch . ".xz" );' /usr/bin/apt-mirror && \
+    sed -i '488s/^/#/' /usr/bin/apt-mirror && \
+    mkdir -pv /var/spool/apt-mirror
 
 # 默认的工作目录
 WORKDIR /etc/apt
 
 # 复制自定义的 apt-mirror 配置文件到容器中
 COPY mirror.list /etc/apt/mirror.list
+
+# 复制 nginx 配置文件
+COPY ubuntu-apt-nginx.conf /etc/nginx/ubuntu-apt-nginx.conf
+COPY ubuntu-mirror-web.conf /etc/nginx/conf.d/ubuntu-mirror-web.conf
 
 # 复制启动脚本
 COPY start.sh /home/start.sh
@@ -380,27 +425,11 @@ CMD ["/bin/bash", "/home/start.sh"]
 
 ```sh
 root@tianxiang:~# cat sources.list
-# 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
+# 阿里云 20.04
 deb http://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
 deb http://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
 deb http://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
 deb http://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
-root@big-server:/data/k8s-app/ubuntu-20.04-apt# ls
-apt-mirror  deployment.yaml  Dockerfile  ingress.yaml  mirror.list  service.yaml  sources.list  start.sh  ubuntu-mirror-web.conf
-root@big-server:/data/k8s-app/ubuntu-20.04-apt# cat sources.list 
-# 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
-deb http://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
-# deb-src http://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
 ```
 
 - 准备 mirror.list 文件
@@ -428,27 +457,23 @@ set nthreads 20
 set _tilde 0
 #
 ############# end config ##############
-# 默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释
-deb https://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ bionic-updates main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ bionic-backports main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse
-
+# 阿里云20.04镜像仓库
 deb https://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
 deb https://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
 deb https://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
 deb https://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
+
 # kubernetes
 deb https://mirrors.aliyun.com/kubernetes/apt kubernetes-xenial main
+
 # docker-ce
 deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu bionic stable
-# deb-src [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu bionic stable
+
+# 清理过期的
 clean https://mirrors.aliyun.com/ubuntu
 clean https://mirrors.aliyun.com/kubernetes/apt
 clean https://mirrors.aliyun.com/docker-ce/linux/ubuntu
 ```
-
-我把 18.04 和 20.04 的全部添加进去了
 
 - 准备 start.sh 启动脚本
 
@@ -741,7 +766,8 @@ apt update
 </html>
 
 root@tianxiang:~# vim sources.list 
-# mirrors.aliyun.com
+
+# 阿里云 20.04
 deb http://mirrors-apt.tianxiang.love/ubuntu/ focal main restricted universe multiverse
 deb http://mirrors-apt.tianxiang.love/ubuntu/ focal-updates main restricted universe multiverse
 deb http://mirrors-apt.tianxiang.love/ubuntu/ focal-backports main restricted universe multiverse
@@ -754,4 +780,46 @@ deb [arch=amd64] http://mirrors-apt.tianxiang.love/docker-ce/linux/ubuntu bionic
 
 root@tianxiang:~# cd ../../../
 root@tianxiang:~# docker-compose up -d
+```
+### 4. 问题报错
+
+如果使用本地源仓库后 update 更新后报错如下
+
+```sh
+错误:99 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/main i386 Packages
+  404  Not Found [IP: 10.0.0.1 80]
+忽略:127 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/restricted i386 Packages
+忽略:128 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/universe i386 Packages
+忽略:129 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/multiverse i386 Packages
+正在读取软件包列表... 完成                         
+E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal-updates/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal-backports/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal-security/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+```
+
+这些因为你系统再下载 i386 架构的软件包,如果你不需要 i386 架构，可以尝试移除它。
+
+```sh
+# 运行以下命令查看当前系统支持的架构
+root@tianxiang:~# dpkg --print-architecture
+root@tianxiang:~# dpkg --print-foreign-architectures
+```
+- `dpkg --print-architecture` 应该显示 amd64（主架构）
+- `dpkg --print-foreign-architectures` 应该为空（如果没有其他架构）
+
+如果 `dpkg --print-foreign-architectures` 显示了 i386，可以通过以下命令移除 i386 架构：
+
+```sh
+root@tianxiang:~# dpkg --remove-architecture i386
+```
+
+再次通过后应该就正常了
+
+```sh
+已下载 648 kB，耗时 13秒 (49.6 kB/s)                                                                                                                                                       
+正在读取软件包列表... 完成
+正在分析软件包的依赖关系树       
+正在读取状态信息... 完成       
+有 83 个软件包可以升级。请执行 ‘apt list --upgradable’ 来查看它们。
 ```
