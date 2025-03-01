@@ -37,6 +37,9 @@ tags: Linux-Ansible
 ```sh
 [root@k8s-master1 ~]# cp roles/init/templates/no-etcd-hosts.j2 roles/init/templates/hosts.j2
 [root@k8s-master1 ~]# sed -i '/^etcd/s/^/#/' hosts.ini
+```
+
+```sh
 [root@k8s-master1 ~]# vim hosts.ini 
 [all]
 k8s-master1 ansible_connection=local  ip=10.0.0.11
@@ -167,7 +170,6 @@ calico_app: '/opt/k8s-install/app/calico'                                       
 [root@k8s-master1 ~]# sed -i 's/^#etcd/etcd/' hosts.ini
 ```
 
-
 ```sh
 [root@k8s-master1 ~]# vim hosts.ini
 [all]
@@ -295,7 +297,7 @@ calico_app: '/opt/k8s-install/app/calico'                                       
 [root@k8s-master1 ~]# ansible-playbook -i hosts.ini multi-master-ha-deploy.yml   # 集群部署
 ```
 
-### 5. 验证集群
+### 4. 验证集群
 
 ```
 # 也可使用 https://etc1:2379 域名
@@ -335,7 +337,7 @@ calico_app: '/opt/k8s-install/app/calico'                                       
 [root@k8s-master1 ~]# kubectl expose deployment nginx --port=80 --target-port=80 --type=NodePort
 ```
 
-### 6. 调整 kube 启动参数
+### 5. 调整 kube 启动参数
 
 ```sh
 # 请手动执行以下命令来修改 kube 自定义配置：
@@ -345,7 +347,7 @@ calico_app: '/opt/k8s-install/app/calico'                                       
 [root@k8s-master1 ~]# kubectl rollout restart daemonset -n kube-system kube-proxy
 ```
 
-### 7. 解决 node 节点报错
+### 6. 解决 node 节点报错
 
 ```sh
 Sep 14 00:59:22 k8s-node1 kubelet[1611]: E0914 00:59:22.040084    1611 file_linux.go:61] "Unable to read config path" err="path does not exist, ignoring" path="/etc/kubernetes/manifests"
@@ -353,13 +355,13 @@ Sep 14 00:59:22 k8s-node1 kubelet[1611]: E0914 00:59:22.040084    1611 file_linu
 [root@k8s-node1 ~]# ansible -i hosts.ini node -m shell -a "systemctl restart kubelet"
 ```
 
-### 8. 卸载删除集群
+### 7. 卸载删除集群
 
 ```sh
 [root@k8s-master1 ~]# ansible-playbook -i hosts.ini remove-k8s.yml
 ```
 
-### 9. 实验录屏
+### 8. 实验录屏
 
 <video width="1200" height="600" controls>
     <source src="https://fileserver.tianxiang.love/api/view?file=%2Fdata%2Fzhentianxiang%2F%E7%A7%BB%E5%8A%A8%E7%A1%AC%E7%9B%98%2F3-Linux%E6%96%87%E4%BB%B6%2F%E9%83%A8%E7%BD%B2%E5%B7%A5%E5%85%B7%2FK8S%E8%87%AA%E5%8A%A8%E5%8C%96%E9%83%A8%E7%BD%B2%2Fkubernetes-install-centos-%E7%A6%BB%E7%BA%BF%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E5%AE%9E%E9%AA%8C%E8%A7%86%E9%A2%91.mp4" type="video/mp4">
