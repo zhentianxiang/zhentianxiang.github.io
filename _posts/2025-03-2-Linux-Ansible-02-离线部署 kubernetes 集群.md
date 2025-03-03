@@ -366,12 +366,11 @@ Sep 14 00:59:22 k8s-node1 kubelet[1611]: E0914 00:59:22.040084    1611 file_linu
 - Centos7 录屏
 
 <video width="1200" height="600" controls>
-    <source src="https://fileserver.tianxiang.love/api/view?file=%2Fdata%2Fzhentianxiang%2F%E7%A7%BB%E5%8A%A8%E7%A1%AC%E7%9B%98%2F3-Linux%E6%96%87%E4%BB%B6%2F%E9%83%A8%E7%BD%B2%E5%B7%A5%E5%85%B7%2FK8S%E8%87%AA%E5%8A%A8%E5%8C%96%E9%83%A8%E7%BD%B2%2Fkubernetes-install-centos-%E7%A6%BB%E7%BA%BF%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E5%AE%9E%E9%AA%8C%E8%A7%86%E9%A2%91.mp4" type="video/mp4">
+    <source src="https://fileserver.tianxiang.love/chfs/shared/zhentianxiang/%E8%A7%86%E9%A2%91%E6%95%99%E5%AD%A6%E7%9B%AE%E5%BD%95/kubernetes-install-centos-%E7%A6%BB%E7%BA%BF%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E5%AE%9E%E9%AA%8C%E8%A7%86%E9%A2%91.mp4" type="video/mp4">
 </video
 
 - Ubuntu 20.04.6 录屏
 
-<video width="1200" height="600" controls>
-    <source src="https://fileserver.tianxiang.love/api/view?file=%2Fdata%2Fzhentianxiang%2F%E7%A7%BB%E5%8A%A8%E7%A1%AC%E7%9B%98%2F3-Linux%E6%96%87%E4%BB%B6%2F%E9%83%A8%E7%BD%B2%E5%B7%A5%E5%85%B7%2FK8S%E8%87%AA%E5%8A%A8%E5%8C%96%E9%83%A8%E7%BD%B2%2FUbuntu-20.04.6-kubernetes-install%E7%A6%BB%E7%BA%BF%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E5%AE%9E%E9%AA%8C%E8%A7%86%E9%A2%91.mp4" type="video/mp4">
+<video width="1200" height="600" controls>  
+    <source src="https://fileserver.tianxiang.love/chfs/shared/zhentianxiang/%E8%A7%86%E9%A2%91%E6%95%99%E5%AD%A6%E7%9B%AE%E5%BD%95/Ubuntu-20.04.6-kubernetes-install%E7%A6%BB%E7%BA%BF%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E5%AE%9E%E9%AA%8C%E8%A7%86%E9%A2%91.mp4" type="video/mp4">
 </video
-
