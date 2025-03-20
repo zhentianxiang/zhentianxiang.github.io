@@ -248,26 +248,121 @@ total 8
 
 ```sh
 #!/bin/bash
+
+# 创建客户端目录
 mkdir -p client
-read -p "please your username: " NAME
+
+# 提示用户输入用户名
+read -p "请输入您的用户名: " NAME
+
+# 询问是否修改端口（默认 1194）
+read -p "默认端口为 1194，是否修改？(y/N): " CHANGE_PORT
+if [[ "$CHANGE_PORT" =~ ^[Yy]$ ]]; then
+    read -p "请输入新的端口号: " NEW_PORT
+else
+    NEW_PORT=1194
+fi
+
+# 询问是否修改协议（默认 TCP）
+read -p "默认协议为 TCP，是否修改？(y/N): " CHANGE_PROTOCOL
+if [[ "$CHANGE_PROTOCOL" =~ ^[Yy]$ ]]; then
+    read -p "请输入新的协议 (tcp/udp): " NEW_PROTOCOL
+else
+    NEW_PROTOCOL="tcp"
+fi
+
+# 输出提示信息
+echo "正在为 $NAME 构建客户端证书..."
+
+# 构建客户端证书
 docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa build-client-full $NAME
+
+# 输出提示信息
+echo "正在为 $NAME 生成客户端配置文件..."
+
+# 生成客户端配置文件
 docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_getclient $NAME > $(pwd)/client/"$NAME".ovpn
+
+# 输出提示信息
+echo "正在修改 $NAME 的客户端配置文件..."
+
+# 修改端口号（如果有变化）
+if [[ "$NEW_PORT" -ne 1194 ]]; then
+    sed -i "s/1194/$NEW_PORT/g" client/"$NAME".ovpn
+fi
+
+# 修改协议（如果有变化）
+if [[ "$NEW_PROTOCOL" != "tcp" ]]; then
+    sed -i "s/tcp/$NEW_PROTOCOL/g" client/"$NAME".ovpn
+fi
+
+# 修改客户端配置文件，删除 redirect-gateway def1
 sed -i "s/redirect-gateway def1//g" client/"$NAME".ovpn
+
+# 在配置文件中插入两条路由信息
+echo -e "\nroute 172.16.246.0 255.255.255.0 vpn_gateway" >> client/"$NAME".ovpn
+#echo "route 192.168.0.0 255.255.0.0 172.16.246.171" >> client/"$NAME".ovpn
+
+# 输出提示信息
+echo "正在重启 OpenVPN 容器..."
+
+# 重启 OpenVPN 容器
 docker restart openvpn
+
+# 输出完成提示信息
+echo "$NAME 的客户端配置文件已成功生成并修改。"
+echo "配置文件位于: $(pwd)/client/$NAME.ovpn"
 ```
 
 #### 1.2 删除用户
 
 ```sh
 #!/bin/bash
-read -p "Delete username: " DNAME
-docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa revoke $DNAME
+
+# 提示用户输入要删除的用户名
+read -p "请输入要删除的用户名: " NAME
+
+# 确保用户名不为空
+if [[ -z "$NAME" ]]; then
+    echo "错误: 用户名不能为空！"
+    exit 1
+fi
+
+# 确认用户是否存在
+if [[ ! -f "pki/issued/$NAME.crt" ]]; then
+    echo "错误: 用户 $NAME 不存在或证书未签发！"
+    exit 1
+fi
+
+# 输出提示信息
+echo "正在撤销 $NAME 的客户端证书..."
+
+# 撤销客户端证书
+docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa revoke $NAME
+
+# 重新生成 CRL（证书吊销列表）
 docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 easyrsa gen-crl
-docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 rm -f /etc/openvpn/pki/reqs/"DNAME".req
-docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 rm -f /etc/openvpn/pki/private/"DNAME".key
-docker run -v $(pwd):/etc/openvpn --rm -it zhentianxiang/openvpn:2.4.8 rm -f /etc/openvpn/pki/issued/"DNAME".crt
-rm -rf client/"$NAME".ovpn
+
+# 移动最新的 CRL 到 OpenVPN 目录
+mv pki/crl.pem /etc/openvpn/crl.pem
+
+# 输出提示信息
+echo "正在删除 $NAME 的证书文件..."
+
+# 删除证书和密钥
+rm -f pki/issued/"$NAME".crt
+rm -f pki/private/"$NAME".key
+rm -f pki/reqs/"$NAME".req
+
+# 删除客户端配置文件
+rm -f client/"$NAME".ovpn
+
+# 重启 OpenVPN 使更改生效
+echo "正在重启 OpenVPN 容器..."
 docker restart openvpn
+
+# 输出完成提示信息
+echo "用户 $NAME 已成功删除，并撤销其证书访问权限。"
 ```
 
 **添加用户**

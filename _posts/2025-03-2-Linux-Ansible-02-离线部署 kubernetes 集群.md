@@ -371,6 +371,6 @@ Sep 14 00:59:22 k8s-node1 kubelet[1611]: E0914 00:59:22.040084    1611 file_linu
 
 - Ubuntu 20.04.6 录屏
 
-<video width="1200" height="600" controls>  
+<video width="1200" height="600" controls>
     <source src="https://fileserver.tianxiang.love/chfs/shared/zhentianxiang/%E8%A7%86%E9%A2%91%E6%95%99%E5%AD%A6%E7%9B%AE%E5%BD%95/Ubuntu-20.04.6-kubernetes-install%E7%A6%BB%E7%BA%BF%E9%83%A8%E7%BD%B2%E9%AB%98%E5%8F%AF%E7%94%A8%E9%9B%86%E7%BE%A4%E5%AE%9E%E9%AA%8C%E8%A7%86%E9%A2%91.mp4" type="video/mp4">
 </video
