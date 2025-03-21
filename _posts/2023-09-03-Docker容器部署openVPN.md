@@ -56,7 +56,6 @@ VPN (虚拟专用网)发展至今已经不在是一个单纯的经过加密的�
 
 ```sh
 # 1.1.1.1 是公网IP，根据实际需求切换自己的公网IP
-# 默认是udp协议，我这边使用的是tcp协议
 [root@k8s-master openvpn]# docker run -v $(pwd):/etc/openvpn --rm zhentianxiang/openvpn:2.4.8 ovpn_genconfig -u udp://1.1.1.1
 ```
 
@@ -239,7 +238,7 @@ total 8
 ### 7. 启动openvpn
 
 ```sh
-[root@k8s-master openvpn]# docker run -dit --name openvpn -v /etc/localtime:/etc/localtime -v $(pwd):/etc/openvpn -p 1194:1194/tcp --cap-add=NET_ADMIN --restart=always zhentianxiang/openvpn:2.4.8
+[root@k8s-master openvpn]# docker run -dit --name openvpn -v /etc/localtime:/etc/localtime -v $(pwd):/etc/openvpn -p 1194:1194/udp --cap-add=NET_ADMIN --restart=always zhentianxiang/openvpn:2.4.8
 ```
 
 ### 8. 用户管理
@@ -400,7 +399,7 @@ echo "用户 $NAME 已成功删除，并撤销其证书访问权限。"
 # 2. 局域网内的机器想要访问 vpn 客户端地址配置如下
 
 # 局域网内其他机器添加静态路由访问 vpn 的网段（注意，这条指令是在其他的机器上配置的）192.168.1.16 是宿主机本机IP
-[root@k8s-master openvpn]# ip route add 192.168.255.0/24 via 192.168.1.16
+[root@k8s-master openvpn]# ip route add 10.100.255.0/24 via 192.168.1.16
 
 # openvpn 宿主机添加 iptables 规则允许来自外部的流量通过防火墙，以确保它可以流经 Docker 网络
 [root@k8s-master openvpn]# iptables -A FORWARD -i eth0 -o docker0 -j ACCEPT
