@@ -776,16 +776,16 @@ apt update
 root@tianxiang:~# vim sources.list 
 
 # 阿里云 22.04
-deb http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
-#deb-src http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
-#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
-#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
-#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
-#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+deb http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy main restricted universe multiverse
+#deb-src http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy main restricted universe multiverse
+deb http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-security main restricted universe multiverse
+#deb-src http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-updates main restricted universe multiverse
+#deb-src http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-proposed main restricted universe multiverse
+#deb-src http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-backports main restricted universe multiverse
+#deb-src http://ubuntu-22.04-apt.linuxtian.com/ubuntu/ jammy-backports main restricted universe multiverse
 
 # kubernetes
 deb http://ubuntu-22.04-apt.linuxtian.com/kubernetes/apt kubernetes-xenial main
