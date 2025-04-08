@@ -6,7 +6,7 @@ description: 欢迎来到我的个人博客~
 avatarTitle: 云原生
 # 头像里面的描述
 avatarDesc: Linux / Kubernetes
-url: "https://blog.linuxtian.top"
+url: "https://zhentianxiang.github.io"
 #url: "https://zhentianxiang.github.io"
 
 # 博客是否自动生成目录，false为不生成，true为生成
@@ -62,7 +62,7 @@ nav:
     - {title: 所有文章, description: archive, url: '/archive'}   
     - {title: 标签, description: tags, url: '/tags'}      
     - {title: 关于我, description: about, url: '/about'}   
-    #- {title: 搜索, description: search, url: '/search'}
+    - {title: 搜索, description: search, url: '/search'}
     
 
 # Pagination
