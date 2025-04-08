@@ -90,7 +90,7 @@ set nthreads 20
 set _tilde 0
 #
 ############# end config ##############
-# 阿里云20.04镜像仓库
+# 阿里云22.04镜像仓库
 deb https://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
 deb https://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
 deb https://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
@@ -105,7 +105,7 @@ clean https://mirrors.aliyun.com/kubernetes/apt
 clean https://mirrors.aliyun.com/docker-ce/linux/ubuntu
 ```
 
-确认一下自己的系统版本是什么，我的是：Ubuntu 20.04 LTS（Focal Fossa），所以配置文件中使用的是，focal
+确认一下自己的系统版本是什么，我的是：Ubuntu 22.04 LTS（Focal Fossa），所以配置文件中使用的是，focal
 
 bionic 是 18.04的，所以不同的版本对应不同的配置文件，不要一味的复制粘贴
 
@@ -293,7 +293,7 @@ root@tianxiang:~# vim index.html
 
             <h3>5. 配置 apt 源列表</h3>
             <p>运行以下命令配置 apt 源列表：</p>
-            <pre>curl -o /etc/apt/sources.list http://mirrors-apt.tianxiang.love/sources.list</pre>
+            <pre>curl -o /etc/apt/sources.list http://ubuntu-22.04-apt.linuxtian.com/sources.list</pre>
         </div>
 
         <h2>复制命令</h2>
@@ -309,7 +309,7 @@ apt update
 apt -y install ca-certificates curl gnupg lsb-release apt-transport-https software-properties-common
 curl -fsSL http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg |apt-key add -
 curl -fsSL https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
-curl -o /etc/apt/sources.list http://mirrors-apt.tianxiang.love/sources.list
+curl -o /etc/apt/sources.list http://ubuntu-22.04-apt.linuxtian.com/sources.list
 apt update
 `;
             
@@ -357,7 +357,7 @@ root@tianxiang:~# nginx -s reload
 
 root@tianxiang:~# curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
 root@tianxiang:~# curl https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
-root@tianxiang:~# curl -o /etc/apt/sources.list http://mirrors-apt.tianxiang.love/sources.list
+root@tianxiang:~# curl -o /etc/apt/sources.list http://ubuntu-22.04-apt.linuxtian.com/sources.list
             
 ```
 
@@ -366,19 +366,19 @@ root@tianxiang:~# curl -o /etc/apt/sources.list http://mirrors-apt.tianxiang.lov
 ```sh
 root@tianxiang:~# apt-get update
 root@tianxiang:~# apt-cache madison nginx
-     nginx | 1.4.6-1ubuntu3.9 | http://mirrors-apt.tianxiang.love/ubuntu trusty-security/main amd64 Packages
-     nginx | 1.4.6-1ubuntu3.9 | http://mirrors-apt.tianxiang.love/ubuntu trusty-updates/main amd64 Packages
-     nginx | 1.4.6-1ubuntu3 | http://mirrors-apt.tianxiang.love/ubuntu trusty/main amd64 Packages
+     nginx | 1.4.6-1ubuntu3.9 | http://ubuntu-22.04-apt.linuxtian.com/ubuntu trusty-security/main amd64 Packages
+     nginx | 1.4.6-1ubuntu3.9 | http://ubuntu-22.04-apt.linuxtian.com/ubuntu trusty-updates/main amd64 Packages
+     nginx | 1.4.6-1ubuntu3 | http://ubuntu-22.04-apt.linuxtian.com/ubuntu trusty/main amd64 Packages
 root@tianxiang:~# apt-cache madison kubeadm
    kubeadm |  1.21.2-00 | http://192.168.1.110/kubernetes/apt kubernetes-xenial/main amd64 Packages
    kubeadm |  1.21.1-00 | http://192.168.1.110/kubernetes/apt kubernetes-xenial/main amd64 Packages
    kubeadm |  1.21.0-00 | http://192.168.1.110/kubernetes/apt kubernetes-xenial/main amd64 Packages
    kubeadm |  1.20.8-00 | http://192.168.1.110/kubernetes/apt kubernetes-xenial/main amd64 Packages
 root@tianxiang:~# apt-cache madison docker-ce
- docker-ce | 5:20.10.7~3-0~ubuntu-bionic | http://mirrors-apt.tianxiang.love/docker-ce/linux/ubuntu bionic/stable amd64 Packages
- docker-ce | 5:20.10.6~3-0~ubuntu-bionic | http://mirrors-apt.tianxiang.love/docker-ce/linux/ubuntu bionic/stable amd64 Packages
- docker-ce | 5:20.10.5~3-0~ubuntu-bionic | http://mirrors-apt.tianxiang.love/docker-ce/linux/ubuntu bionic/stable amd64 Packages
- docker-ce | 5:20.10.4~3-0~ubuntu-bionic | http://mirrors-apt.tianxiang.love/docker-ce/linux/ubuntu bionic/stable amd64 Packages
+ docker-ce | 5:20.10.7~3-0~ubuntu-bionic | http://ubuntu-22.04-apt.linuxtian.com/docker-ce/linux/ubuntu bionic/stable amd64 Packages
+ docker-ce | 5:20.10.6~3-0~ubuntu-bionic | http://ubuntu-22.04-apt.linuxtian.com/docker-ce/linux/ubuntu bionic/stable amd64 Packages
+ docker-ce | 5:20.10.5~3-0~ubuntu-bionic | http://ubuntu-22.04-apt.linuxtian.com/docker-ce/linux/ubuntu bionic/stable amd64 Packages
+ docker-ce | 5:20.10.4~3-0~ubuntu-bionic | http://ubuntu-22.04-apt.linuxtian.com/docker-ce/linux/ubuntu bionic/stable amd64 Packages
 ```
 
 ## 三、Docker 启动内网源服务
@@ -390,7 +390,7 @@ root@tianxiang:~# apt-cache madison docker-ce
 ```sh
 root@tianxiang:~# cat Dockerfile 
 # 使用官方的 Ubuntu 镜像作为基础镜像
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # 设置环境变量，避免交互式安装
 ENV DEBIAN_FRONTEND=noninteractive
@@ -425,11 +425,17 @@ CMD ["/bin/bash", "/home/start.sh"]
 
 ```sh
 root@tianxiang:~# cat sources.list
-# 阿里云 20.04
-deb http://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
-deb http://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
+# 阿里云 22.04
+deb http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
 ```
 
 - 准备 mirror.list 文件
@@ -457,11 +463,17 @@ set nthreads 20
 set _tilde 0
 #
 ############# end config ##############
-# 阿里云20.04镜像仓库
-deb https://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
+# 阿里云22.04镜像仓库
+deb http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
 
 # kubernetes
 deb https://mirrors.aliyun.com/kubernetes/apt kubernetes-xenial main
@@ -535,9 +547,9 @@ main
 ```sh
 root@tianxiang:~# cat docker-compose.yml 
 services:
-  Ubuntu-20.04-apt:
-    container_name: Ubuntu-20.04-apt
-    image: ubuntu-20.04-apt-mirror:latest
+  ubuntu-22.04_mirrors:
+    container_name: ubuntu-22.04_mirrors
+    image: ubuntu-22.04-apt-mirror:latest
     ports:
       - 80:80
     environment:
@@ -555,7 +567,7 @@ services:
 root@tianxiang:~# cat mirror-web.conf
 server {
     listen       80;
-    server_name  mirrors-apt.tianxiang.love;
+    server_name  ubuntu-22.04-apt.linuxtian.com;
     client_max_body_size 0m;
 
     location / {
@@ -585,7 +597,7 @@ root@tianxiang:~# vim index.html
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ubuntu 镜像源 - 内网快速配置</title>
+    <title>Ubuntu-22.04 镜像源 - 内网快速配置</title>
     <style>
         /* 样式重置 */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -731,7 +743,7 @@ root@tianxiang:~# vim index.html
 
             <h3>5. 配置 apt 源列表</h3>
             <p>运行以下命令配置 apt 源列表：</p>
-            <pre>curl -o /etc/apt/sources.list http://mirrors-apt.tianxiang.love/sources.list</pre>
+            <pre>curl -o /etc/apt/sources.list http://ubuntu-22.04-apt.linuxtian.com/sources.list</pre>
         </div>
 
         <h2>复制命令</h2>
@@ -747,7 +759,7 @@ apt update
 apt -y install ca-certificates curl gnupg lsb-release apt-transport-https software-properties-common
 curl -fsSL http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg |apt-key add -
 curl -fsSL https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | apt-key add -
-curl -o /etc/apt/sources.list http://mirrors-apt.tianxiang.love/sources.list
+curl -o /etc/apt/sources.list http://ubuntu-22.04-apt.linuxtian.com/sources.list
 apt update
 `;
             
@@ -767,16 +779,22 @@ apt update
 
 root@tianxiang:~# vim sources.list 
 
-# 阿里云 20.04
-deb http://mirrors-apt.tianxiang.love/ubuntu/ focal main restricted universe multiverse
-deb http://mirrors-apt.tianxiang.love/ubuntu/ focal-updates main restricted universe multiverse
-deb http://mirrors-apt.tianxiang.love/ubuntu/ focal-backports main restricted universe multiverse
-deb http://mirrors-apt.tianxiang.love/ubuntu/ focal-security main restricted universe multiverse
+# 阿里云 22.04
+deb http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
 
 # kubernetes
-deb http://mirrors-apt.tianxiang.love/kubernetes/apt kubernetes-xenial main
+deb http://ubuntu-22.04-apt.linuxtian.com/kubernetes/apt kubernetes-xenial main
 # docker-ce
-deb [arch=amd64] http://mirrors-apt.tianxiang.love/docker-ce/linux/ubuntu bionic stable
+deb [arch=amd64] http://ubuntu-22.04-apt.linuxtian.com/docker-ce/linux/ubuntu bionic stable
 
 root@tianxiang:~# cd ../../../
 root@tianxiang:~# docker-compose up -d
@@ -786,16 +804,16 @@ root@tianxiang:~# docker-compose up -d
 如果使用本地源仓库后 update 更新后报错如下
 
 ```sh
-错误:99 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/main i386 Packages
+错误:99 http://ubuntu-22.04-apt.linuxtian.com/ubuntu  focal-security/main i386 Packages
   404  Not Found [IP: 10.0.0.1 80]
-忽略:127 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/restricted i386 Packages
-忽略:128 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/universe i386 Packages
-忽略:129 http://mirrors-apt.tianxiang.love/ubuntu  focal-security/multiverse i386 Packages
+忽略:127 http://ubuntu-22.04-apt.linuxtian.com/ubuntu  focal-security/restricted i386 Packages
+忽略:128 http://ubuntu-22.04-apt.linuxtian.com/ubuntu  focal-security/universe i386 Packages
+忽略:129 http://ubuntu-22.04-apt.linuxtian.com/ubuntu  focal-security/multiverse i386 Packages
 正在读取软件包列表... 完成                         
-E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
-E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal-updates/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
-E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal-backports/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
-E: 无法下载 http://mirrors-apt.tianxiang.love/ubuntu/dists/focal-security/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+E: 无法下载 http://ubuntu-22.04-apt.linuxtian.com/ubuntu/dists/focal/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+E: 无法下载 http://ubuntu-22.04-apt.linuxtian.com/ubuntu/dists/focal-updates/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+E: 无法下载 http://ubuntu-22.04-apt.linuxtian.com/ubuntu/dists/focal-backports/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
+E: 无法下载 http://ubuntu-22.04-apt.linuxtian.com/ubuntu/dists/focal-security/main/binary-i386/Packages   404  Not Found [IP: 10.0.0.1 80]
 ```
 
 这些因为你系统再下载 i386 架构的软件包,如果你不需要 i386 架构，可以尝试移除它。
