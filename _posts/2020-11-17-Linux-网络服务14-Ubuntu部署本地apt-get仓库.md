@@ -410,10 +410,6 @@ WORKDIR /etc/apt
 # 复制自定义的 apt-mirror 配置文件到容器中
 COPY mirror.list /etc/apt/mirror.list
 
-# 复制 nginx 配置文件
-COPY ubuntu-apt-nginx.conf /etc/nginx/ubuntu-apt-nginx.conf
-COPY ubuntu-mirror-web.conf /etc/nginx/conf.d/ubuntu-mirror-web.conf
-
 # 复制启动脚本
 COPY start.sh /home/start.sh
 
@@ -557,14 +553,14 @@ services:
       TZ: "Asia/Shanghai"
     volumes:
       - ./apt-mirror:/var/spool/apt-mirror
-      - ./mirror-web.conf:/etc/nginx/conf.d/mirrors-web.conf
+      - ./ubuntu-22.04-mirrors.conf:/etc/nginx/conf.d/ubuntu-22.04-mirrors.conf
     restart: always
 ```
 
 - mirror-web.conf 文件
 
 ```sh
-root@tianxiang:~# cat mirror-web.conf
+root@tianxiang:~# cat ubuntu-22.04-mirrors.conf
 server {
     listen       80;
     server_name  ubuntu-22.04-apt.linuxtian.com;
