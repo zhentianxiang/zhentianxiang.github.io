@@ -65,7 +65,12 @@ VPN (虚拟专用网)发展至今已经不在是一个单纯的经过加密的�
 # 监听地址
 local 0.0.0.0
 
-# 协议
+# 启用服务器模式
+#mode server
+
+#tls-server
+
+# 协议（明确为服务端模式）
 proto udp
 
 # 端口
@@ -75,11 +80,11 @@ port 1194
 dev tun0
 
 # 证书与密钥
-key /etc/openvpn/pki/private/47.120.62.2.key
+key /etc/openvpn/pki/private/1.1.1.1.key
 ca /etc/openvpn/pki/ca.crt
-cert /etc/openvpn/pki/issued/47.120.62.2.crt
+cert /etc/openvpn/pki/issued/1.1.1.1.crt
 dh /etc/openvpn/pki/dh.pem
-tls-auth /etc/openvpn/pki/ta.key
+tls-auth /etc/openvpn/pki/ta.key 0
 key-direction 0
 
 # 连接保持
@@ -389,10 +394,44 @@ echo "用户 $NAME 已成功删除，并撤销其证书访问权限。"
 
 # 开启 ipv4 net 转发
 [root@k8s-master openvpn]# sysctl -w net.ipv4.ip_forward=1
+
 # 允许所有目标（更通用的 MASQUERADE）,使其客户端能访问到openvpn服务端所在的内网中所有局域网地址,如果最限制可以使用 -d 指局域网地址
 [root@k8s-master openvpn]# iptables -t nat -A POSTROUTING -s 10.100.255.0/24 -j MASQUERADE
+
 # 增加一条静态路由 172.17.0.2 是 openvpn 容器地址
 [root@k8s-master openvpn]# ip route add 10.100.255.0/24 via 172.17.0.2 dev docker0
+
+# 开启 ipv4 net 转发
+sysctl -w net.ipv4.ip_forward=1
+
+# 开机自动加载
+[root@k8s-master openvpn]# vim /usr/local/bin/openvpn-route.sh
+#!/bin/bash
+
+# 添加 NAT 转发规则
+iptables -t nat -C POSTROUTING -s 10.100.255.0/24 -j MASQUERADE 2>/dev/null || \
+iptables -t nat -A POSTROUTING -s 10.100.255.0/24 -j MASQUERADE
+
+# 添加静态路由（避免重复添加）
+ip route | grep -q '10.100.255.0/24 via 172.17.0.2' || \
+ip route add 10.100.255.0/24 via 172.17.0.2 dev docker0
+
+[root@k8s-master openvpn]# chmod +x /usr/local/bin/openvpn-route.sh
+
+[root@k8s-master openvpn]# vim /etc/systemd/system/openvpn-route.service
+[Unit]
+Description=Configure OpenVPN NAT and Routing
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/openvpn-route.sh
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+
+[root@k8s-master openvpn]# systemctl daemon-reexec && systemctl daemon-reload && systemctl enable openvpn-route.service --now
 ```
 
 ```sh
