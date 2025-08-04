@@ -91,23 +91,32 @@ set _tilde 0
 #
 ############# end config ##############
 # 阿里云22.04镜像仓库
-deb https://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+#deb-src http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+
 # kubernetes
 deb https://mirrors.aliyun.com/kubernetes/apt kubernetes-xenial main
-# docker-ce
-deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu bionic stable
-# deb-src [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu bionic stable
+
+# docker-ce 22.04
+deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu jammy stable
+
+# 清理过期的
 clean https://mirrors.aliyun.com/ubuntu
 clean https://mirrors.aliyun.com/kubernetes/apt
 clean https://mirrors.aliyun.com/docker-ce/linux/ubuntu
 ```
 
-确认一下自己的系统版本是什么，我的是：Ubuntu 22.04 LTS（Focal Fossa），所以配置文件中使用的是，focal
+确认一下自己的系统版本是什么，我的是：Ubuntu 22.04 LTS（Focal Fossa），所以配置文件中使用的是 jammy
 
-bionic 是 18.04的，所以不同的版本对应不同的配置文件，不要一味的复制粘贴
+focal 是 20.04 bionic 是 18.04，所以不同的版本对应不同的配置文件，不要一味的复制粘贴
 
 
 ###  3. 开始同步
